@@ -1,0 +1,144 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: vox-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vox_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-vox}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vox}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vox-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: vox-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vox-network
+
+  # Control Plane (FastAPI + FastAGI)
+  control-plane:
+    build:
+      context: ./control-plane
+      dockerfile: Dockerfile
+    container_name: vox-control-plane
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-vox}:${POSTGRES_PASSWORD:-vox_secret}@postgres:5432/${POSTGRES_DB:-vox}
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_prod}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - MINIMAX_API_KEY=${MINIMAX_API_KEY}
+      - MINIMAX_GROUP_ID=${MINIMAX_GROUP_ID}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+    ports:
+      - "8000:8000"  # REST API
+      - "4573:4573"  # FastAGI
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./control-plane:/app
+    networks:
+      - vox-network
+
+  # LiveKit Media Server
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: vox-livekit
+    command: --config /livekit.yaml --node-ip livekit
+    ports:
+      - "7880:7880"      # HTTP API
+      - "7881:7881"      # WebSocket
+      - "40000-40200:50000-50200/udp"  # WebRTC (mapped to different host ports)
+    volumes:
+      - ./telephony/livekit/livekit.yaml:/livekit.yaml
+    networks:
+      - vox-network
+
+  # LiveKit SIP Gateway
+  livekit-sip:
+    image: livekit/sip:latest
+    container_name: vox-livekit-sip
+    command: --config /sip.yaml
+    ports:
+      - "5060:5060/udp"  # SIP UDP
+      - "5060:5060/tcp"  # SIP TCP
+    volumes:
+      - ./telephony/livekit/sip.yaml:/sip.yaml
+    depends_on:
+      - livekit
+    networks:
+      - vox-network
+
+  # Asterisk PBX
+  asterisk:
+    image: andrius/asterisk:20
+    container_name: vox-asterisk
+    ports:
+      - "5080:5080"      # PJSIP WebSocket
+      - "10000-10100:10000-10100/udp"  # RTP
+    volumes:
+      - ./telephony/asterisk/configs/pjsip.conf:/etc/asterisk/pjsip.conf
+      - ./telephony/asterisk/configs/extensions.conf:/etc/asterisk/extensions.conf
+      - ./telephony/asterisk/configs/rtp.conf:/etc/asterisk/rtp.conf
+      - asterisk_recordings:/var/spool/asterisk/monitor
+    depends_on:
+      - control-plane
+      - livekit-sip
+    networks:
+      - vox-network
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vox-frontend
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - control-plane
+    networks:
+      - vox-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  asterisk_recordings:
+
+networks:
+  vox-network:
+    driver: bridge

@@ -1,0 +1,54 @@
+# LiveKit SIP Gateway Configuration
+# Bridges PSTN/SIP to WebRTC rooms
+
+# Redis for state management
+redis:
+  address: redis:6379
+
+# LiveKit connection
+livekit:
+  host: livekit:7880
+  api_key: devkey
+  api_secret: secret
+
+# SIP configuration
+sip:
+  # Listen address for SIP
+  listen:
+    - 0.0.0.0:5060
+
+  # RTP port range
+  rtp_port_range:
+    start: 50000
+    end: 50200
+
+  # Codecs (prefer Opus for quality)
+  codecs:
+    - opus
+    - pcma
+    - pcmu
+
+# Trunk configuration for outbound calls
+# trunks:
+#   - name: primary-trunk
+#     address: ${SIP_TRUNK_HOST}
+#     auth_username: ${SIP_TRUNK_USER}
+#     auth_password: ${SIP_TRUNK_SECRET}
+
+# Inbound routing
+routing:
+  # Default room prefix
+  room_prefix: "call-"
+
+  # Create rooms for incoming calls
+  create_room: true
+
+  # Extract assistant ID from SIP headers
+  # X-Vox-Assistant-ID header is passed by Asterisk
+  metadata_from_headers:
+    - X-Vox-Assistant-ID
+    - X-Vox-Caller-ID
+    - X-Vox-Call-ID
+
+logging:
+  level: info

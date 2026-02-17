@@ -1,0 +1,27 @@
+# LiveKit Server Configuration
+# Self-hosted WebRTC media server
+
+port: 7880
+rtc:
+  # UDP ports for WebRTC media
+  port_range_start: 50000
+  port_range_end: 50200
+  # Node IP for external access
+  node_ip: ""
+
+room:
+  # Auto-create rooms when participants join
+  auto_create: true
+  # Room timeout after last participant leaves
+  empty_timeout: 300
+  # Max participants per room
+  max_participants: 10
+
+logging:
+  level: info
+  # JSON format for production
+  json: false
+
+# API keys for authentication (map format)
+keys:
+  devkey: secret
