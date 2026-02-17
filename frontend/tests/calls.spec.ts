@@ -9,10 +9,12 @@ test.describe('Calls Page', () => {
     // Check for page header
     await expect(authenticatedPage.locator('h1:has-text("Call Logs")')).toBeVisible()
 
-    // Check for table headers
+    // Check for table headers - actual headers: Time, Phone, Caller, Duration, Latency, Status
     await expect(authenticatedPage.locator('th:has-text("Time")')).toBeVisible()
     await expect(authenticatedPage.locator('th:has-text("Phone")')).toBeVisible()
-    await expect(authenticatedPage.locator('th:has-text("Assistant")')).toBeVisible()
+    await expect(authenticatedPage.locator('th:has-text("Caller")')).toBeVisible()
+    await expect(authenticatedPage.locator('th:has-text("Duration")')).toBeVisible()
+    await expect(authenticatedPage.locator('th:has-text("Latency")')).toBeVisible()
     await expect(authenticatedPage.locator('th:has-text("Status")')).toBeVisible()
   })
 
