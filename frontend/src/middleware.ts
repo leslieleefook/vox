@@ -22,12 +22,8 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith(path)
   )
 
-  // TEMPORARY: Skip auth check for testing API integration
-  // TODO: Re-enable auth in production
-  const skipAuth = process.env.NODE_ENV === 'development' || true
-
   // Redirect to login if accessing protected route without session
-  if (isProtectedPath && !session && !skipAuth) {
+  if (isProtectedPath && !session) {
     const redirectUrl = new URL('/login', req.url)
     redirectUrl.searchParams.set('redirect', req.nextUrl.pathname)
     return NextResponse.redirect(redirectUrl)
