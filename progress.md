@@ -18,15 +18,22 @@
 - **Build:** ✓ Passes (Next.js 14.1.0)
 - **TypeScript:** ✓ No errors
 - **ESLint:** ✓ No warnings or errors
-- **Playwright E2E:** 22 passed, 0 skipped, 0 failed
+- **Playwright E2E (local dev):** 22 passed, 0 skipped, 0 failed
+- **Playwright E2E (Docker):** 18 passed, 4 failed*
+
+*\* Docker frontend uses placeholder Supabase credentials, so unauthenticated redirect tests fail. All authenticated tests pass with mock auth.*
 
 ### Test Breakdown
-- Auth tests: 4 passed
-- Assistants tests: 5 passed (with mock auth)
-- Calls tests: 3 passed (with mock auth)
-- Components tests: 3 passed
-- Navigation tests: 5 passed
-- API Health tests: 2 passed
+| Test Suite | Local | Docker |
+|------------|-------|--------|
+| Auth tests | 4 passed | 3 passed, 1 failed* |
+| Assistants tests | 5 passed | 5 passed |
+| Calls tests | 3 passed | 3 passed |
+| Components tests | 3 passed | 3 passed |
+| Navigation tests | 5 passed | 1 passed, 4 failed* |
+| API Health tests | 2 passed | 2 passed |
+
+*\* Failures due to placeholder Supabase credentials in Docker build*
 
 ### Fixes Applied
 1. Created `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
