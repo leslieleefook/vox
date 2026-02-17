@@ -75,3 +75,6 @@ logs/
 
 # Alembic
 *.pyc
+
+# Supabase local
+supabase/.env
