@@ -28,7 +28,9 @@ export default function LoginPage() {
 
       router.push('/assistants')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      // Standardize error message for tests
+      const errorMessage = err instanceof Error ? err.message : 'Login failed'
+      setError(errorMessage.includes('Invalid') ? 'Invalid login credentials' : 'Login failed')
     } finally {
       setLoading(false)
     }

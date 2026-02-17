@@ -1,30 +1,32 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
+
+const BASE_URL = 'http://localhost:3000'
 
 test.describe('Calls Page', () => {
-  test.skip('should display calls table', async ({ page }) => {
-    await page.goto('/calls')
+  test('should display calls table', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto(BASE_URL + '/calls')
 
     // Check for page header
-    await expect(page.locator('h1:has-text("Call Logs")')).toBeVisible()
+    await expect(authenticatedPage.locator('h1:has-text("Call Logs")')).toBeVisible()
 
     // Check for table headers
-    await expect(page.locator('th:has-text("Time")')).toBeVisible()
-    await expect(page.locator('th:has-text("Phone")')).toBeVisible()
-    await expect(page.locator('th:has-text("Assistant")')).toBeVisible()
-    await expect(page.locator('th:has-text("Status")')).toBeVisible()
+    await expect(authenticatedPage.locator('th:has-text("Time")')).toBeVisible()
+    await expect(authenticatedPage.locator('th:has-text("Phone")')).toBeVisible()
+    await expect(authenticatedPage.locator('th:has-text("Assistant")')).toBeVisible()
+    await expect(authenticatedPage.locator('th:has-text("Status")')).toBeVisible()
   })
 
-  test.skip('should filter calls by search', async ({ page }) => {
-    await page.goto('/calls')
+  test('should filter calls by search', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto(BASE_URL + '/calls')
 
     // Type in search
-    await page.fill('input[placeholder*="Search"]', '+1868')
+    await authenticatedPage.fill('input[placeholder*="Search"]', '+1868')
 
     // Wait for filtering
-    await page.waitForTimeout(500)
+    await authenticatedPage.waitForTimeout(500)
 
-    // Check that results contain the search term
-    const rows = page.locator('tbody tr')
+    // Check that results contain the search term (if any exist)
+    const rows = authenticatedPage.locator('tbody tr')
     const count = await rows.count()
 
     if (count > 0) {
@@ -34,13 +36,13 @@ test.describe('Calls Page', () => {
     }
   })
 
-  test.skip('should show empty state when no calls', async ({ page }) => {
-    await page.goto('/calls')
+  test('should show empty state when no calls', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto(BASE_URL + '/calls')
 
     // Type search that won't match
-    await page.fill('input[placeholder*="Search"]', 'xyznonexistent123')
+    await authenticatedPage.fill('input[placeholder*="Search"]', 'xyznonexistent123')
 
     // Check for empty state
-    await expect(page.locator('text=No calls found')).toBeVisible()
+    await expect(authenticatedPage.locator('text=No calls found')).toBeVisible()
   })
 })

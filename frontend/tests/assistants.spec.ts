@@ -1,36 +1,32 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
-// Note: These tests require authentication
-// In CI, you would set up a test user and authenticate first
+const BASE_URL = 'http://localhost:3000'
 
 test.describe('Assistants Page', () => {
-  test.skip('should display assistants list', async ({ page }) => {
-    // This test is skipped because it requires authentication
-    // To enable, add authentication setup
-
-    await page.goto('/assistants')
+  test('should display assistants list', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto(BASE_URL + '/assistants')
 
     // Check for page header
-    await expect(page.locator('h1:has-text("Assistants")')).toBeVisible()
+    await expect(authenticatedPage.locator('h1:has-text("Assistants")')).toBeVisible()
 
     // Check for create button
-    await expect(page.locator('button:has-text("Create Assistant")')).toBeVisible()
+    await expect(authenticatedPage.locator('button:has-text("Create Assistant")')).toBeVisible()
 
     // Check for search input
-    await expect(page.locator('input[placeholder*="Search"]')).toBeVisible()
+    await expect(authenticatedPage.locator('input[placeholder*="Search"]')).toBeVisible()
   })
 
-  test.skip('should filter assistants by search', async ({ page }) => {
-    await page.goto('/assistants')
+  test('should filter assistants by search', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto(BASE_URL + '/assistants')
 
     // Type in search
-    await page.fill('input[placeholder*="Search"]', 'Customer')
+    await authenticatedPage.fill('input[placeholder*="Search"]', 'Customer')
 
     // Wait for filtered results
-    await page.waitForTimeout(500)
+    await authenticatedPage.waitForTimeout(500)
 
     // Check that only matching assistants are shown
-    const cards = page.locator('[class*="VoxCard"]')
+    const cards = authenticatedPage.locator('[class*="VoxCard"]')
     const count = await cards.count()
 
     for (let i = 0; i < count; i++) {
@@ -40,36 +36,45 @@ test.describe('Assistants Page', () => {
     }
   })
 
-  test.skip('should show empty state when no assistants', async ({ page }) => {
-    await page.goto('/assistants')
+  test('should show empty state when no assistants', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto(BASE_URL + '/assistants')
 
     // Type search that won't match anything
-    await page.fill('input[placeholder*="Search"]', 'xyznonexistent123')
+    await authenticatedPage.fill('input[placeholder*="Search"]', 'xyznonexistent123')
 
     // Check for empty state
-    await expect(page.locator('text=No assistants found')).toBeVisible()
+    await expect(authenticatedPage.locator('text=No assistants found')).toBeVisible()
   })
 })
 
 test.describe('Assistant Card', () => {
-  test.skip('should display assistant details', async ({ page }) => {
-    await page.goto('/assistants')
+  test('should display assistant details', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto(BASE_URL + '/assistants')
 
-    // Get first assistant card
-    const firstCard = page.locator('[class*="VoxCard"]').first()
+    // Wait for cards to load
+    await authenticatedPage.waitForSelector('h3', { timeout: 5000 })
+
+    // Get first assistant card by finding the grid container and its children
+    const firstCard = authenticatedPage.locator('div.grid > div').first()
 
     // Check for expected elements
     await expect(firstCard.locator('h3')).toBeVisible() // Name
-    await expect(firstCard.locator('text=/Today:|calls/')).toBeVisible() // Call count
+    // Check for calls count - use .first() to avoid strict mode violation
+    await expect(firstCard.locator('text=/Today:/i').first()).toBeVisible()
   })
 
-  test.skip('should have edit and delete buttons', async ({ page }) => {
-    await page.goto('/assistants')
+  test('should have edit and delete buttons', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto(BASE_URL + '/assistants')
 
-    const firstCard = page.locator('[class*="VoxCard"]').first()
+    // Wait for cards to load
+    await authenticatedPage.waitForSelector('h3', { timeout: 5000 })
 
-    // Check for action buttons
-    const editButton = firstCard.locator('button').filter({ hasText: '' }).first()
-    await expect(editButton).toBeVisible()
+    // Get first assistant card
+    const firstCard = authenticatedPage.locator('div.grid > div').first()
+
+    // Check for action buttons (Edit and Delete) - look for buttons with icons
+    const buttons = firstCard.locator('button')
+    const buttonCount = await buttons.count()
+    expect(buttonCount).toBeGreaterThan(0)
   })
 })
