@@ -1,62 +1,98 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Phone, Clock, ArrowUpDown } from 'lucide-react'
+import { Search, Phone, Clock, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { VoxCard, VoxInput, VoxBadge } from '@/components/vox'
+import { VoxCard, VoxInput, VoxBadge, VoxButton } from '@/components/vox'
+import { useCallLogs } from '@/lib/hooks'
+import { ErrorState } from '@/components/ui/ErrorState'
+import { CallsTableSkeleton } from '@/components/ui/LoadingSkeleton'
 
-// Mock data - would come from API
-const mockCalls = [
-  {
-    id: '1',
-    phoneNumber: '+18685551234',
-    callerId: '+18687770001',
-    assistant: 'Customer Support',
-    duration: 245,
-    latency: 680,
-    status: 'completed',
-    transcript: 'Hello, I need help with my order...',
-    timestamp: new Date('2024-01-15T10:30:00'),
-  },
-  {
-    id: '2',
-    phoneNumber: '+18685555678',
-    callerId: '+18687770002',
-    assistant: 'Sales Assistant',
-    duration: 180,
-    latency: 720,
-    status: 'completed',
-    transcript: 'Hi, I am interested in your product...',
-    timestamp: new Date('2024-01-15T10:15:00'),
-  },
-  {
-    id: '3',
-    phoneNumber: '+18685551234',
-    callerId: '+18687770003',
-    assistant: 'Customer Support',
-    duration: 0,
-    latency: null,
-    status: 'missed',
-    transcript: null,
-    timestamp: new Date('2024-01-15T09:45:00'),
-  },
-]
+// Default client ID for demo purposes
+// In production, this would come from auth context
+const DEFAULT_CLIENT_ID = '00000000-0000-0000-0000-000000000001'
 
 export default function CallsPage() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [calls] = useState(mockCalls)
+
+  const {
+    calls,
+    total,
+    page,
+    totalPages,
+    isLoading,
+    error,
+    refetch,
+    goToPage,
+    nextPage,
+    prevPage,
+  } = useCallLogs({ clientId: DEFAULT_CLIENT_ID, pageSize: 10 })
 
   const filteredCalls = calls.filter(
     (c) =>
-      c.phoneNumber.includes(searchQuery) ||
-      c.callerId.includes(searchQuery) ||
-      c.assistant.toLowerCase().includes(searchQuery.toLowerCase())
+      c.phone_number.includes(searchQuery) ||
+      c.caller_id.includes(searchQuery) ||
+      (c.transcript && c.transcript.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
-  const formatDuration = (seconds: number) => {
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return '-'
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const formatLatency = (ms: number | null) => {
+    if (!ms) return '-'
+    return `${ms}ms`
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-readable">Call Logs</h1>
+          <p className="text-slate-400 mt-1 tracking-readable">
+            View and analyze your call history
+          </p>
+        </div>
+        <VoxCard className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left p-4 text-slate-400 font-medium tracking-readable">Time</th>
+                  <th className="text-left p-4 text-slate-400 font-medium tracking-readable">Phone</th>
+                  <th className="text-left p-4 text-slate-400 font-medium tracking-readable">Caller</th>
+                  <th className="text-left p-4 text-slate-400 font-medium tracking-readable">Duration</th>
+                  <th className="text-left p-4 text-slate-400 font-medium tracking-readable">Latency</th>
+                  <th className="text-left p-4 text-slate-400 font-medium tracking-readable">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <CallsTableSkeleton rows={5} />
+              </tbody>
+            </table>
+          </div>
+        </VoxCard>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-readable">Call Logs</h1>
+          <p className="text-slate-400 mt-1 tracking-readable">
+            View and analyze your call history
+          </p>
+        </div>
+        <ErrorState message={error} onRetry={refetch} />
+      </div>
+    )
   }
 
   return (
@@ -77,14 +113,14 @@ export default function CallsPage() {
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
           />
           <VoxInput
-            placeholder="Search by phone or assistant..."
+            placeholder="Search by phone or transcript..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
         <VoxBadge variant="default" className="self-center">
-          Last 7 days
+          {total} total calls
         </VoxBadge>
       </div>
 
@@ -108,9 +144,6 @@ export default function CallsPage() {
                   Caller
                 </th>
                 <th className="text-left p-4 text-slate-400 font-medium tracking-readable">
-                  Assistant
-                </th>
-                <th className="text-left p-4 text-slate-400 font-medium tracking-readable">
                   Duration
                 </th>
                 <th className="text-left p-4 text-slate-400 font-medium tracking-readable">
@@ -131,23 +164,22 @@ export default function CallsPage() {
                   className="border-b border-white/5 hover:bg-white/5 cursor-pointer"
                 >
                   <td className="p-4 text-sm">
-                    {call.timestamp.toLocaleTimeString()}
+                    {new Date(call.created_at).toLocaleString()}
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
                       <Phone size={14} className="text-slate-500" />
-                      <span className="text-sm">{call.phoneNumber}</span>
+                      <span className="text-sm">{call.phone_number}</span>
                     </div>
                   </td>
                   <td className="p-4 text-sm text-slate-400">
-                    {call.callerId}
-                  </td>
-                  <td className="p-4 text-sm">{call.assistant}</td>
-                  <td className="p-4 text-sm">
-                    {call.duration > 0 ? formatDuration(call.duration) : '-'}
+                    {call.caller_id}
                   </td>
                   <td className="p-4 text-sm">
-                    {call.latency ? `${call.latency}ms` : '-'}
+                    {formatDuration(call.duration_seconds)}
+                  </td>
+                  <td className="p-4 text-sm">
+                    {formatLatency(call.latency_ms)}
                   </td>
                   <td className="p-4">
                     <VoxBadge
@@ -163,11 +195,42 @@ export default function CallsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t border-white/10">
+            <p className="text-sm text-slate-400">
+              Page {page} of {totalPages}
+            </p>
+            <div className="flex gap-2">
+              <VoxButton
+                variant="ghost"
+                size="sm"
+                onClick={prevPage}
+                disabled={page <= 1}
+              >
+                <ChevronLeft size={16} />
+                Previous
+              </VoxButton>
+              <VoxButton
+                variant="ghost"
+                size="sm"
+                onClick={nextPage}
+                disabled={page >= totalPages}
+              >
+                Next
+                <ChevronRight size={16} />
+              </VoxButton>
+            </div>
+          </div>
+        )}
       </VoxCard>
 
-      {filteredCalls.length === 0 && (
+      {filteredCalls.length === 0 && !isLoading && (
         <div className="text-center py-12">
-          <p className="text-slate-400">No calls found</p>
+          <p className="text-slate-400">
+            {searchQuery ? 'No calls found matching your search' : 'No call logs yet. Calls will appear here once they are made.'}
+          </p>
         </div>
       )}
     </div>

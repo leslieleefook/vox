@@ -1,0 +1,88 @@
+/**
+ * TypeScript interfaces for Vox API responses
+ * Based on backend Pydantic schemas
+ */
+
+export interface Client {
+  id: string
+  name: string
+  api_key: string
+  webhook_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Assistant {
+  id: string
+  client_id: string
+  name: string
+  system_prompt: string
+  minimax_voice_id: string
+  llm_model: string
+  first_message: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AssistantCreate {
+  name: string
+  system_prompt: string
+  client_id: string
+  minimax_voice_id?: string
+  llm_model?: string
+  first_message?: string | null
+}
+
+export interface AssistantUpdate {
+  name?: string
+  system_prompt?: string
+  minimax_voice_id?: string
+  llm_model?: string
+  first_message?: string | null
+}
+
+export interface PhoneNumber {
+  e164_number: string
+  assistant_id: string
+  asterisk_context: string
+  created_at: string
+}
+
+export interface PhoneNumberCreate {
+  e164_number: string
+  assistant_id: string
+  asterisk_context?: string
+}
+
+export interface CallLog {
+  id: string
+  client_id: string
+  assistant_id: string | null
+  phone_number: string
+  caller_id: string
+  transcript: string | null
+  latency_ms: number | null
+  duration_seconds: number | null
+  status: string
+  room_name: string | null
+  created_at: string
+}
+
+export interface PaginatedResponse<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface HealthResponse {
+  status: string
+  database: string
+  redis: string
+  version: string
+}
+
+// API Error type
+export interface ApiError {
+  detail: string
+}
