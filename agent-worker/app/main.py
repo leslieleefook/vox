@@ -6,6 +6,7 @@ from livekit.api import RoomServiceClient, CreateRoomRequest
 
 from app.config import settings
 from app.pipeline import run_bot
+from app.services import DeepgramSTTService, MinimaxTTSService, OpenRouterService
 
 structlog.configure(
     processors=[
@@ -16,6 +17,24 @@ structlog.configure(
 )
 
 logger = structlog.get_logger()
+
+
+async def prewarm_connections():
+    """Pre-warm connections to reduce first-request latency."""
+    logger.info("Pre-warming connections...")
+
+    # Pre-warm shared HTTP clients
+    await MinimaxTTSService.get_shared_client()
+    await OpenRouterService.get_shared_client()
+
+    # Pre-warm Deepgram WebSocket connection
+    if settings.deepgram_api_key:
+        await DeepgramSTTService.prewarm_connection(
+            api_key=settings.deepgram_api_key,
+            sample_rate=settings.sample_rate
+        )
+
+    logger.info("Connections pre-warmed successfully")
 
 
 class AgentWorker:
@@ -34,6 +53,9 @@ class AgentWorker:
     async def start(self):
         """Start the agent worker."""
         logger.info("Starting agent worker")
+
+        # Pre-warm connections for reduced latency
+        await prewarm_connections()
 
         # Initialize LiveKit client
         self.livekit_client = RoomServiceClient(

@@ -37,7 +37,7 @@ class VoiceBot:
         assistant_id: str,
         system_prompt: str,
         voice_id: str = "mallory",
-        llm_model: str = "meta-llama/llama-3.1-70b-instruct",
+        llm_model: str = "groq/llama-3.1-8b-instant",
         first_message: Optional[str] = None
     ):
         self.room_name = room_name
@@ -291,7 +291,7 @@ async def run_bot(
         assistant_id=assistant_config["assistant_id"],
         system_prompt=assistant_config["system_prompt"],
         voice_id=assistant_config.get("minimax_voice_id", "mallory"),
-        llm_model=assistant_config.get("llm_model", "meta-llama/llama-3.1-70b-instruct"),
+        llm_model=assistant_config.get("llm_model", "groq/llama-3.1-8b-instant"),
         first_message=assistant_config.get("first_message")
     )
 

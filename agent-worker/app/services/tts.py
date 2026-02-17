@@ -1,7 +1,7 @@
 """Minimax TTS service for streaming speech synthesis."""
 import asyncio
 import struct
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, ClassVar
 import httpx
 import json
 from app.config import settings
@@ -13,7 +13,15 @@ class MinimaxTTSService:
 
     Uses Minimax Speech-01-Turbo for ultra-low latency voice synthesis
     with superior prosody and emotional control.
+
+    Optimizations:
+    - HTTP/2 connection pooling for reduced latency
+    - Persistent client with keep-alive
+    - Pre-warmed connections
     """
+
+    # Shared client pool for connection reuse
+    _shared_client: ClassVar[Optional[httpx.AsyncClient]] = None
 
     def __init__(
         self,
@@ -26,7 +34,28 @@ class MinimaxTTSService:
         self.group_id = group_id or settings.minimax_group_id
         self.base_url = settings.minimax_base_url
         self.sample_rate = settings.sample_rate
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self._own_client = False
+
+    @classmethod
+    async def get_shared_client(cls) -> httpx.AsyncClient:
+        """Get or create shared HTTP client with connection pooling."""
+        if cls._shared_client is None or cls._shared_client.is_closed:
+            cls._shared_client = httpx.AsyncClient(
+                timeout=30.0,
+                http2=True,  # Enable HTTP/2 for multiplexing
+                limits=httpx.Limits(
+                    max_keepalive_connections=10,
+                    keepalive_expiry=30.0
+                )
+            )
+        return cls._shared_client
+
+    @classmethod
+    async def close_shared_client(cls):
+        """Close the shared HTTP client."""
+        if cls._shared_client and not cls._shared_client.is_closed:
+            await cls._shared_client.aclose()
+            cls._shared_client = None
 
     async def stream_tts(
         self,
@@ -67,7 +96,8 @@ class MinimaxTTSService:
         if self.group_id:
             url = f"{self.base_url}/text_to_speech?GroupId={self.group_id}"
 
-        async with self.client.stream(
+        client = await self.get_shared_client()
+        async with client.stream(
             "POST",
             url,
             json=payload,
@@ -100,8 +130,9 @@ class MinimaxTTSService:
         return audio_data
 
     async def close(self):
-        """Close the HTTP client."""
-        await self.client.aclose()
+        """Close the HTTP client (no-op for shared client)."""
+        # Shared client is managed at class level
+        pass
 
 
 # Factory function

@@ -35,7 +35,7 @@ class AssistantBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     system_prompt: str = Field(..., min_length=1)
     minimax_voice_id: str = Field(default="mallory", max_length=50)
-    llm_model: str = Field(default="meta-llama/llama-3.1-70b-instruct", max_length=100)
+    llm_model: str = Field(default="groq/llama-3.1-8b-instant", max_length=100)
     first_message: Optional[str] = None
 
 
