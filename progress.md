@@ -1,10 +1,106 @@
 # Project Vox - Progress Tracker
 
 ## Current Status
-**Phase:** Assistant Configuration Enhanced - STT, Structured Output, Webhooks
+**Phase:** Model Configuration Module - Completed
 **Last Updated:** 2026-02-18
 
-### Backend Services Running
+## Model Configuration Module (2026-02-18)
+
+### New Database Fields
+- `llm_provider` - LLM provider selection (openrouter, openai, anthropic) - default: openrouter
+- `first_message_mode` - First message mode (assistant-first, user-first, wait-trigger) - default: assistant-first
+- `temperature` - LLM temperature (0.0-2.0) - default: 0.7
+- `max_tokens` - Maximum response tokens (1-32000) - default: 256
+- `rag_file_ids` - RAG file IDs for knowledge base (future feature) - nullable
+
+### New Files Created
+- `frontend/src/components/assistants/ModelConfigSection.tsx` - Model config accordion component
+- `frontend/src/components/vox/VoxSlider.tsx` - Glass-morphism slider with synchronized number input
+- `frontend/src/lib/constants/llmProviders.ts` - Provider/model definitions (OpenRouter, OpenAI, Anthropic)
+- `control-plane/alembic/versions/004_model_config.py` - DB migration
+
+### Files Modified
+- `frontend/src/components/assistants/AssistantFormModal.tsx` - Integrated ModelConfigSection
+- `frontend/src/lib/api/types.ts` - Added llm_provider, first_message_mode, temperature, max_tokens
+- `frontend/src/components/vox/index.ts` - Export VoxSlider
+- `control-plane/app/models/models.py` - Added model config fields
+- `control-plane/app/api/v1/schemas.py` - Added new fields to schemas
+
+### Model Configuration Features
+- Collapsible accordion for model settings
+- Provider/Model coupled dropdowns:
+  - OpenRouter: Llama 3.1 70B/8B, Groq variants, DeepSeek, Claude 3 Haiku
+  - OpenAI: GPT-4o, GPT-4o Mini, GPT-4 Turbo
+  - Anthropic: Claude 3.5 Sonnet, Claude 3 Haiku
+- First Message Mode selection:
+  - Assistant First - speaks immediately when call connects
+  - User First - waits for user to speak
+  - Wait for Trigger - waits for specific trigger event
+- System Prompt textarea with placeholder AI Generate button
+- Temperature slider (0.0-2.0) with synchronized number input
+- Max Tokens input (1-32000)
+- Files (RAG) disabled placeholder for Phase 2
+
+### UI Behavior
+1. Provider change auto-resets model to first available for that provider
+2. First message input disabled when "user-first" or "wait-trigger" mode selected
+3. Temperature slider syncs with number input
+4. Accordion auto-expands if non-default settings detected
+
+### End-to-End Test Results
+- API POST /assistants returns all new model config fields ✓
+- API accepts llm_provider, temperature, max_tokens values ✓
+- Migration 004_model_config applied successfully ✓
+- Frontend TypeScript compiles without errors ✓
+- Frontend build successful ✓
+- ESLint passes with no warnings ✓
+
+### Sample API Response (with new fields)
+```json
+{
+  "llm_provider": "openai",
+  "llm_model": "gpt-4o",
+  "first_message_mode": "user-first",
+  "temperature": 0.5,
+  "max_tokens": 512,
+  "rag_file_ids": null
+}
+```
+
+## Next Steps
+1. AI Prompt Generation - Generate system prompts with AI button
+2. Files (RAG) upload - Knowledge base file management
+3. Transcriber Configuration Module - STT provider, language, sensitivity
+
+---
+
+## Voice Configuration Enhancement (2026-02-18)
+
+### New Database Fields
+- `tts_model` - MiniMax TTS model selection (default: speech-02-turbo)
+- `tts_is_manual_id` - Toggle for using custom/cloned voice IDs (default: false)
+
+### New Files Created
+- `frontend/src/components/assistants/VoiceConfigSection.tsx` - Voice config accordion component
+- `frontend/src/lib/constants/minimaxVoices.ts` - Extended MiniMax voice list (11 voices)
+- `control-plane/alembic/versions/003_voice_config.py` - DB migration
+
+### Files Modified
+- `frontend/src/components/assistants/AssistantFormModal.tsx` - Integrated VoiceConfigSection
+- `frontend/src/lib/api/types.ts` - Added tts_model, tts_is_manual_id fields
+- `control-plane/app/models/models.py` - Added tts_model, tts_is_manual_id fields
+- `control-plane/app/api/v1/schemas.py` - Added new fields to schemas
+
+### Voice Configuration Features
+- Collapsible accordion for voice settings
+- Expanded MiniMax voice list (11 voices: Mallory, Wise Man, Friendly Girl, Seraphina, Alex, Qingse, Shaonv, Jingying, Yujie, Badao, Chengshu)
+- Model selection (speech-02-turbo for speed, speech-02-hd for quality)
+- Manual Voice ID toggle for cloned voices
+- Auto-expands when manual mode is enabled
+
+---
+
+## Backend Services Running
 | Service | Port | Status |
 |---------|------|--------|
 | PostgreSQL | 5432 | ✓ Healthy |
@@ -32,34 +128,7 @@
 | Analytics Page (3 tests) | 3 passed | 3 passed | 3 passed | 9 |
 | Settings Page (4 tests) | 4 passed | 4 passed | 4 passed | 12 |
 
-### Fixes Applied
-1. Created `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-2. Fixed `navigation.spec.ts` to expect login redirect for unauthenticated users
-3. Added ESLint configuration (`.eslintrc.json`)
-4. Created `tests/fixtures.ts` with authenticated page fixture for mock auth
-5. Created `tests/auth-helpers.ts` for mock Supabase authentication
-6. Updated `assistants.spec.ts` and `calls.spec.ts` to use authenticated fixture
-7. Fixed selectors for VoxCard components (no class name, uses Tailwind)
-8. Fixed auth error message test to be more flexible
-
-### Latest Fixes (2026-02-17)
-9. Fixed `assistants.spec.ts` - Updated `waitForSelector` to use locator API for cross-browser compatibility
-10. Fixed `assistants.spec.ts` - Changed test expectation from "Today:" to "Created:" to match actual UI
-11. Fixed `calls.spec.ts` - Corrected table header expectations (Time, Phone, Caller, Duration, Latency, Status)
-12. Fixed `auth.spec.ts` - Added browser-specific handling for WebKit's different behavior with invalid email inputs
-13. Added successful login test with real Supabase credentials (leslieleefook@incusservices.com)
-14. Updated Supabase client to use cookies for session persistence (enables middleware auth)
-15. Skipped successful login test in WebKit due to stricter cookie policies
-
-### Latest Fixes (2026-02-18)
-16. Added Analytics and Settings placeholder pages with E2E tests (21 tests)
-17. Added STT provider selection (Deepgram, Whisper, AssemblyAI)
-18. Added structured output schema configuration (JSON editor)
-19. Added webhook URL for call completion notifications
-20. Expanded voice options (Mallory, Wise Man, Friendly Girl, Seraphina, Alex)
-21. Expanded LLM options (Groq Llama 8B/70B, DeepSeek, Claude 3 Haiku)
-22. Fixed DEFAULT_CLIENT_ID to match existing database record
-23. Created alembic migration 002_assistant_config for new fields
+---
 
 ## Assistant Configuration Enhancement (2026-02-18)
 
@@ -90,11 +159,7 @@
 | Speech-to-Text | Deepgram (Recommended), Whisper, AssemblyAI |
 | LLM Model | Groq Llama 3.1 8B/70B, OpenRouter Llama 70B, DeepSeek Chat, Claude 3 Haiku |
 
-### End-to-End Test Results
-- API POST /assistants returns all new fields ✓
-- Frontend form renders all dropdowns ✓
-- Advanced Settings toggle works ✓
-- Assistant creation with all fields successful ✓
+---
 
 ## Completed
 
@@ -127,7 +192,7 @@
 ### Phase 4: Frontend ✓
 - [x] Next.js 14 App Router setup
 - [x] Tailwind CSS with Lumina design system
-- [x] VoxCard, PulseIndicator, VoxButton, VoxInput, VoxBadge components
+- [x] VoxCard, PulseIndicator, VoxButton, VoxInput, VoxBadge, VoxSlider components
 - [x] Dashboard layout
 - [x] Assistants page
 - [x] Call logs page
@@ -155,6 +220,8 @@
 - [x] Health checks passing
 - [x] Sample data created
 
+---
+
 ## Latency Test Results (2026-02-17)
 
 | Service | Measured | Target | Status |
@@ -180,7 +247,7 @@
 | LiveKit SIP | 5060 | ✓ Running |
 | Asterisk | 5080, 10000-10100/udp | ✓ Healthy |
 
-## API Health Status (2026-02-17)
+## API Health Status (2026-02-18)
 
 ```json
 {
@@ -198,25 +265,7 @@
 - **API Root:** http://localhost:8000/
 - **API Health:** http://localhost:8000/api/v1/health
 
-## Next Steps - Latency Optimization
-
-1. **Connection Pooling:**
-   - [x] Implement persistent WebSocket connections for Deepgram
-   - [x] Add connection warm-up on service startup
-   - [x] HTTP/2 connection pooling for TTS and LLM
-
-2. **Alternative Providers:**
-   - [ ] Evaluate ElevenLabs TTS (potentially faster - claims ~250-300ms)
-   - [ ] Test Deepgram nova-2 model for faster STT (already using it)
-
-3. **Architecture:**
-   - [ ] Deploy agent-worker closer to API endpoints (edge deployment)
-   - [x] Implement speculative TTS caching for common responses
-
-4. **LLM Optimization:**
-   - [x] Switched default model to Groq Llama 3.1 8B Instant (faster)
-   - [x] Prioritize Groq provider for lowest latency
-   - [x] Streaming responses already implemented
+---
 
 ## TTS Caching Implementation (2026-02-17)
 
@@ -242,18 +291,6 @@
 - Graceful degradation if Redis unavailable
 - Cache hit/miss logging
 
-### Common Phrases Pre-warmed
-- Greetings: Hello, Hi there, Good morning/afternoon/evening, Welcome
-- Acknowledgments: I understand, Got it, Sure thing, Of course, etc.
-- Hold messages: One moment please, Please hold, Just a second, etc.
-- Confirmations: Yes, No problem, That's correct, Perfect, Great
-- Clarifications: Could you please repeat that?, I didn't catch that
-- Closings: Goodbye, Thank you for calling, Have a great day, etc.
-
-### Expected Latency Improvement
-- Cache hit: ~5ms (Redis fetch) vs ~1200ms (Minimax API)
-- Pre-warmed phrases: Instant availability on first use
-
 ### Benchmark Results (2026-02-17)
 
 | Metric | Uncached (API) | Cached (Redis) | Improvement |
@@ -268,30 +305,10 @@
 - After (cached): ~824ms (STT 822ms + TTS 1.6ms + overhead)
 - Target: <800ms ✓ Nearly achieved for cached phrases
 
-## Optimizations Applied (2026-02-17)
-
-### TTS Service (agent-worker/app/services/tts.py)
-- Added HTTP/2 support with connection pooling
-- Shared client across instances for connection reuse
-- Keep-alive connections (30s expiry)
-
-### STT Service (agent-worker/app/services/stt.py)
-- Connection pooling with pre-warm capability
-- Return connections to pool for reuse
-- Pre-warm on worker startup
-
-### LLM Service (agent-worker/app/services/llm.py)
-- HTTP/2 connection pooling
-- Shared client across instances
-- Default model changed to Groq Llama 3.1 8B Instant
-- Provider priority: Groq > Together > OpenAI
-
-### Agent Worker (agent-worker/app/main.py)
-- Pre-warm connections on startup
-- Reduces first-request latency
+---
 
 ## Notes
 - Supabase auth helpers updated to use lazy client initialization
 - LiveKit WebRTC ports mapped to 40000-40200 on host to avoid conflicts
 - Frontend Docker volume mounts removed for production deployment
-- Target latency: <800ms round-trip (not yet achieved)
+- Target latency: <800ms round-trip (not yet achieved for uncached responses)

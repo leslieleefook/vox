@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
+from typing_extensions import Literal
 
 
 # Client schemas
@@ -35,11 +36,19 @@ class AssistantBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     system_prompt: str = Field(..., min_length=1)
     minimax_voice_id: str = Field(default="mallory", max_length=50)
+    tts_model: str = Field(default="speech-02-turbo", max_length=100)
+    tts_is_manual_id: bool = Field(default=False)
     llm_model: str = Field(default="groq/llama-3.1-8b-instant", max_length=100)
     stt_provider: str = Field(default="deepgram", max_length=50)
     structured_output_schema: Optional[str] = Field(None, description="JSON schema for structured output")
     webhook_url: Optional[str] = Field(None, max_length=500, description="Webhook URL for call completion notifications")
     first_message: Optional[str] = None
+    # Model Configuration fields
+    llm_provider: str = Field(default="openrouter", max_length=50, description="LLM provider: openrouter, openai, anthropic")
+    first_message_mode: str = Field(default="assistant-first", max_length=50, description="First message mode: assistant-first, user-first, wait-trigger")
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="LLM temperature (0.0-2.0)")
+    max_tokens: int = Field(default=256, ge=1, le=32000, description="Maximum tokens in response")
+    rag_file_ids: Optional[str] = Field(None, description="Comma-separated file IDs for RAG")
 
 
 class AssistantCreate(AssistantBase):
@@ -50,11 +59,19 @@ class AssistantUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     system_prompt: Optional[str] = Field(None, min_length=1)
     minimax_voice_id: Optional[str] = Field(None, max_length=50)
+    tts_model: Optional[str] = Field(None, max_length=100)
+    tts_is_manual_id: Optional[bool] = None
     llm_model: Optional[str] = Field(None, max_length=100)
     stt_provider: Optional[str] = Field(None, max_length=50)
     structured_output_schema: Optional[str] = Field(None, description="JSON schema for structured output")
     webhook_url: Optional[str] = Field(None, max_length=500, description="Webhook URL for call completion notifications")
     first_message: Optional[str] = None
+    # Model Configuration fields
+    llm_provider: Optional[str] = Field(None, max_length=50)
+    first_message_mode: Optional[str] = Field(None, max_length=50)
+    temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
+    max_tokens: Optional[int] = Field(None, ge=1, le=32000)
+    rag_file_ids: Optional[str] = None
 
 
 class AssistantResponse(AssistantBase):

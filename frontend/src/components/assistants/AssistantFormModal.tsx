@@ -9,6 +9,8 @@ import { useState, useEffect } from 'react'
 import { X, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { VoxCard, VoxButton, VoxInput } from '@/components/vox'
+import { VoiceConfigSection } from '@/components/assistants/VoiceConfigSection'
+import { ModelConfigSection } from '@/components/assistants/ModelConfigSection'
 import type { Assistant, AssistantCreate, AssistantUpdate } from '@/lib/api'
 
 interface AssistantFormModalProps {
@@ -19,22 +21,6 @@ interface AssistantFormModalProps {
   clientId: string
   isLoading?: boolean
 }
-
-const VOICE_OPTIONS = [
-  { value: 'mallory', label: 'Mallory (Female)' },
-  { value: 'wise_man', label: 'Wise Man (Male)' },
-  { value: 'friendly_girl', label: 'Friendly Girl (Female)' },
-  { value: 'seraphina', label: 'Seraphina (Female)' },
-  { value: 'alex', label: 'Alex (Male)' },
-]
-
-const LLM_MODEL_OPTIONS = [
-  { value: 'groq/llama-3.1-8b-instant', label: 'Llama 3.1 8B (Groq) - Fast' },
-  { value: 'groq/llama-3.1-70b-versatile', label: 'Llama 3.1 70B (Groq)' },
-  { value: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B (OpenRouter)' },
-  { value: 'deepseek/deepseek-chat', label: 'DeepSeek Chat' },
-  { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku (OpenRouter)' },
-]
 
 const STT_PROVIDER_OPTIONS = [
   { value: 'deepgram', label: 'Deepgram (Recommended)' },
@@ -66,11 +52,18 @@ export function AssistantFormModal({
     name: '',
     system_prompt: '',
     minimax_voice_id: 'mallory',
+    tts_model: 'speech-02-turbo',
+    tts_is_manual_id: false,
     llm_model: 'groq/llama-3.1-8b-instant',
     stt_provider: 'deepgram',
     structured_output_schema: '',
     webhook_url: '',
     first_message: '',
+    // Model Configuration fields
+    llm_provider: 'openrouter',
+    first_message_mode: 'assistant-first',
+    temperature: 0.7,
+    max_tokens: 256,
   })
   const [error, setError] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -82,11 +75,18 @@ export function AssistantFormModal({
         name: assistant.name,
         system_prompt: assistant.system_prompt,
         minimax_voice_id: assistant.minimax_voice_id || 'mallory',
+        tts_model: assistant.tts_model || 'speech-02-turbo',
+        tts_is_manual_id: assistant.tts_is_manual_id || false,
         llm_model: assistant.llm_model || 'groq/llama-3.1-8b-instant',
         stt_provider: assistant.stt_provider || 'deepgram',
         structured_output_schema: assistant.structured_output_schema || '',
         webhook_url: assistant.webhook_url || '',
         first_message: assistant.first_message || '',
+        // Model Configuration fields
+        llm_provider: assistant.llm_provider || 'openrouter',
+        first_message_mode: assistant.first_message_mode || 'assistant-first',
+        temperature: assistant.temperature ?? 0.7,
+        max_tokens: assistant.max_tokens ?? 256,
       })
       // Show advanced if any advanced field has data
       if (assistant.structured_output_schema || assistant.webhook_url) {
@@ -98,11 +98,18 @@ export function AssistantFormModal({
         name: '',
         system_prompt: '',
         minimax_voice_id: 'mallory',
+        tts_model: 'speech-02-turbo',
+        tts_is_manual_id: false,
         llm_model: 'groq/llama-3.1-8b-instant',
         stt_provider: 'deepgram',
         structured_output_schema: '',
         webhook_url: '',
         first_message: '',
+        // Model Configuration fields
+        llm_provider: 'openrouter',
+        first_message_mode: 'assistant-first',
+        temperature: 0.7,
+        max_tokens: 256,
       })
       setShowAdvanced(false)
     }
@@ -147,11 +154,18 @@ export function AssistantFormModal({
         name: formData.name,
         system_prompt: formData.system_prompt,
         minimax_voice_id: formData.minimax_voice_id,
+        tts_model: formData.tts_model,
+        tts_is_manual_id: formData.tts_is_manual_id,
         llm_model: formData.llm_model,
         stt_provider: formData.stt_provider,
         structured_output_schema: formData.structured_output_schema.trim() || null,
         webhook_url: formData.webhook_url.trim() || null,
         first_message: formData.first_message.trim() || null,
+        // Model Configuration fields
+        llm_provider: formData.llm_provider,
+        first_message_mode: formData.first_message_mode,
+        temperature: formData.temperature,
+        max_tokens: formData.max_tokens,
       }
 
       if (assistant) {
@@ -175,6 +189,14 @@ export function AssistantFormModal({
   ) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleVoiceConfigChange = (field: string, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleModelConfigChange = (field: string, value: string | number) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
   return (
@@ -225,83 +247,45 @@ export function AssistantFormModal({
                   />
                 </div>
 
+                {/* Speech-to-Text Provider */}
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">System Prompt</label>
-                  <textarea
-                    name="system_prompt"
-                    value={formData.system_prompt}
+                  <label className="block text-sm text-slate-400 mb-1">Speech-to-Text</label>
+                  <select
+                    name="stt_provider"
+                    value={formData.stt_provider}
                     onChange={handleChange}
-                    placeholder="You are a helpful assistant..."
                     disabled={isLoading}
-                    rows={4}
-                    className="flex w-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-md px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-vox-idle/50 focus:border-vox-idle/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 resize-none"
-                  />
+                    className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-vox-idle/50 focus:border-vox-idle/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
+                  >
+                    {STT_PROVIDER_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value} className="bg-slate-900">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">First Message (optional)</label>
-                  <VoxInput
-                    name="first_message"
-                    value={formData.first_message}
-                    onChange={handleChange}
-                    placeholder="Hello! How can I help you today?"
-                    disabled={isLoading}
-                  />
-                </div>
+                {/* Voice Configuration Section */}
+                <VoiceConfigSection
+                  voiceId={formData.minimax_voice_id}
+                  ttsModel={formData.tts_model}
+                  isManualId={formData.tts_is_manual_id}
+                  onChange={handleVoiceConfigChange}
+                  disabled={isLoading}
+                />
 
-                {/* Voice & AI Settings */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Voice (TTS)</label>
-                    <select
-                      name="minimax_voice_id"
-                      value={formData.minimax_voice_id}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                      className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-vox-idle/50 focus:border-vox-idle/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
-                    >
-                      {VOICE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value} className="bg-slate-900">
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Speech-to-Text</label>
-                    <select
-                      name="stt_provider"
-                      value={formData.stt_provider}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                      className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-vox-idle/50 focus:border-vox-idle/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
-                    >
-                      {STT_PROVIDER_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value} className="bg-slate-900">
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">LLM Model</label>
-                    <select
-                      name="llm_model"
-                      value={formData.llm_model}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                      className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-vox-idle/50 focus:border-vox-idle/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
-                    >
-                      {LLM_MODEL_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value} className="bg-slate-900">
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                {/* Model Configuration Section */}
+                <ModelConfigSection
+                  llmProvider={formData.llm_provider}
+                  llmModel={formData.llm_model}
+                  firstMessageMode={formData.first_message_mode}
+                  firstMessage={formData.first_message}
+                  systemPrompt={formData.system_prompt}
+                  temperature={formData.temperature}
+                  maxTokens={formData.max_tokens}
+                  onChange={handleModelConfigChange}
+                  disabled={isLoading}
+                />
 
                 {/* Advanced Settings Toggle */}
                 <button

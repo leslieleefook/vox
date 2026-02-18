@@ -18,11 +18,19 @@ export interface Assistant {
   name: string
   system_prompt: string
   minimax_voice_id: string
+  tts_model: string
+  tts_is_manual_id: boolean
   llm_model: string
   stt_provider: string
   structured_output_schema: string | null
   webhook_url: string | null
   first_message: string | null
+  // Model Configuration fields
+  llm_provider: string
+  first_message_mode: string
+  temperature: number
+  max_tokens: number
+  rag_file_ids: string | null
   created_at: string
   updated_at: string
 }
@@ -32,22 +40,38 @@ export interface AssistantCreate {
   system_prompt: string
   client_id: string
   minimax_voice_id?: string
+  tts_model?: string
+  tts_is_manual_id?: boolean
   llm_model?: string
   stt_provider?: string
   structured_output_schema?: string | null
   webhook_url?: string | null
   first_message?: string | null
+  // Model Configuration fields
+  llm_provider?: string
+  first_message_mode?: string
+  temperature?: number
+  max_tokens?: number
+  rag_file_ids?: string | null
 }
 
 export interface AssistantUpdate {
   name?: string
   system_prompt?: string
   minimax_voice_id?: string
+  tts_model?: string
+  tts_is_manual_id?: boolean
   llm_model?: string
   stt_provider?: string
   structured_output_schema?: string | null
   webhook_url?: string | null
   first_message?: string | null
+  // Model Configuration fields
+  llm_provider?: string
+  first_message_mode?: string
+  temperature?: number
+  max_tokens?: number
+  rag_file_ids?: string | null
 }
 
 export interface PhoneNumber {

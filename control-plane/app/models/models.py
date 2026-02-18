@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Text, ForeignKey, DateTime, Integer, Index
+from sqlalchemy import String, Text, ForeignKey, DateTime, Integer, Index, Boolean, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from app.database import Base
@@ -51,6 +51,8 @@ class Assistant(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
     minimax_voice_id: Mapped[str] = mapped_column(String(50), default="mallory")
+    tts_model: Mapped[str] = mapped_column(String(100), default="speech-02-turbo")
+    tts_is_manual_id: Mapped[bool] = mapped_column(default=False)
     llm_model: Mapped[str] = mapped_column(
         String(100),
         default="meta-llama/llama-3.1-70b-instruct"
@@ -59,6 +61,12 @@ class Assistant(Base):
     structured_output_schema: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     webhook_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     first_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Model Configuration fields
+    llm_provider: Mapped[str] = mapped_column(String(50), default="openrouter")
+    first_message_mode: Mapped[str] = mapped_column(String(50), default="assistant-first")
+    temperature: Mapped[float] = mapped_column(Float, nullable=False, default=0.7)
+    max_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=256)
+    rag_file_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
