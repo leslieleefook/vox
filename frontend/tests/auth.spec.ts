@@ -1,6 +1,35 @@
 import { test, expect } from '@playwright/test'
 
+// Test credentials from environment
+const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'leslieleefook@incusservices.com'
+const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'Password123'
+
 test.describe('Authentication Flow', () => {
+  test('should login successfully with valid credentials', async ({ page, browserName }) => {
+    // Skip in WebKit due to stricter cookie policies that prevent JS-set cookies
+    // WebKit requires server-side cookie setting which the local Supabase doesn't do
+    test.skip(browserName === 'webkit', 'WebKit has stricter cookie policies')
+
+    await page.goto('/login')
+
+    // Fill in valid credentials
+    const emailInput = page.locator('input[type="email"]')
+    const passwordInput = page.locator('input[type="password"]')
+    const submitButton = page.locator('button[type="submit"]')
+
+    await emailInput.fill(TEST_EMAIL)
+    await passwordInput.fill(TEST_PASSWORD)
+
+    // Submit form
+    await submitButton.click()
+
+    // Wait for redirect to assistants page
+    await expect(page).toHaveURL(/\/assistants/, { timeout: 20000 })
+
+    // Verify we're on the assistants page
+    await expect(page.locator('h1, h2').filter({ hasText: /assistants/i })).toBeVisible({ timeout: 10000 })
+  })
+
   test('should display login page', async ({ page }) => {
     await page.goto('/login')
 

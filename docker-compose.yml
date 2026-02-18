@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vox_secret}
       POSTGRES_DB: ${POSTGRES_DB:-vox}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -124,8 +124,9 @@ services:
       dockerfile: Dockerfile
     container_name: vox-frontend
     environment:
-      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      # Use local Supabase for development (from supabase/.env)
+      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:8001
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzcxMzM1ODE0LCJleHAiOjE5MjkwMTU4MTR9.ClhxXjkBDJDmyIassJ0HzcsbnoEHG0r4V37mn7JK4BY
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     ports:
       - "3000:3000"
