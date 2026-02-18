@@ -10,7 +10,7 @@ import { CallsTableSkeleton } from '@/components/ui/LoadingSkeleton'
 
 // Default client ID for demo purposes
 // In production, this would come from auth context
-const DEFAULT_CLIENT_ID = '00000000-0000-0000-0000-000000000001'
+const DEFAULT_CLIENT_ID = 'df4ec656-3ed9-4f97-b94b-c79f9835ac95'
 
 export default function CallsPage() {
   const [searchQuery, setSearchQuery] = useState('')
