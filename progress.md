@@ -1,8 +1,8 @@
 # Project Vox - Progress Tracker
 
 ## Current Status
-**Phase:** Frontend Fully Functional - All Tests Passing
-**Last Updated:** 2026-02-17
+**Phase:** Assistant Configuration Enhanced - STT, Structured Output, Webhooks
+**Last Updated:** 2026-02-18
 
 ### Backend Services Running
 | Service | Port | Status |
@@ -14,13 +14,13 @@
 | LiveKit SIP | 5060 | ✓ Running |
 | Asterisk | 5080 | ✓ Healthy |
 
-### Frontend Test Results (2026-02-17)
+### Frontend Test Results (2026-02-18)
 - **Build:** ✓ Passes (Next.js 14.1.0)
 - **TypeScript:** ✓ No errors
 - **ESLint:** ✓ No warnings or errors
-- **Playwright E2E (all browsers):** 67 passed, 1 skipped, 0 failed
+- **Playwright E2E (all browsers):** 88 passed, 1 skipped, 0 failed
 
-### Test Breakdown (68 total tests, 1 skipped)
+### Test Breakdown (89 total tests, 1 skipped)
 | Test Suite | Chromium | Firefox | WebKit | Total |
 |------------|----------|---------|--------|-------|
 | Assistants Page (5 tests) | 5 passed | 5 passed | 5 passed | 15 |
@@ -29,6 +29,8 @@
 | Calls Page (3 tests) | 3 passed | 3 passed | 3 passed | 9 |
 | Components (3 tests) | 3 passed | 3 passed | 3 passed | 9 |
 | Navigation (6 tests) | 6 passed | 6 passed | 6 passed | 18 |
+| Analytics Page (3 tests) | 3 passed | 3 passed | 3 passed | 9 |
+| Settings Page (4 tests) | 4 passed | 4 passed | 4 passed | 12 |
 
 ### Fixes Applied
 1. Created `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -48,6 +50,51 @@
 13. Added successful login test with real Supabase credentials (leslieleefook@incusservices.com)
 14. Updated Supabase client to use cookies for session persistence (enables middleware auth)
 15. Skipped successful login test in WebKit due to stricter cookie policies
+
+### Latest Fixes (2026-02-18)
+16. Added Analytics and Settings placeholder pages with E2E tests (21 tests)
+17. Added STT provider selection (Deepgram, Whisper, AssemblyAI)
+18. Added structured output schema configuration (JSON editor)
+19. Added webhook URL for call completion notifications
+20. Expanded voice options (Mallory, Wise Man, Friendly Girl, Seraphina, Alex)
+21. Expanded LLM options (Groq Llama 8B/70B, DeepSeek, Claude 3 Haiku)
+22. Fixed DEFAULT_CLIENT_ID to match existing database record
+23. Created alembic migration 002_assistant_config for new fields
+
+## Assistant Configuration Enhancement (2026-02-18)
+
+### New Database Fields
+- `stt_provider` - Speech-to-text provider selection (default: deepgram)
+- `structured_output_schema` - JSON schema for structured call analysis
+- `webhook_url` - URL to receive POST requests when calls end
+
+### Backend Changes
+- `control-plane/app/models/models.py` - Added new fields to Assistant model
+- `control-plane/app/api/v1/schemas.py` - Updated Pydantic schemas
+- `control-plane/alembic/versions/002_add_assistant_config_fields.py` - Migration
+
+### Frontend Changes
+- `frontend/src/lib/api/types.ts` - Updated TypeScript interfaces
+- `frontend/src/components/assistants/AssistantFormModal.tsx` - Enhanced form with:
+  - 3-column layout for Voice, STT, LLM dropdowns
+  - Collapsible Advanced Settings section
+  - JSON schema editor for structured output
+  - Webhook URL input field
+  - Form validation for JSON and URL formats
+
+### Form Options
+
+| Field | Options |
+|-------|---------|
+| Voice (TTS) | Mallory, Wise Man, Friendly Girl, Seraphina, Alex |
+| Speech-to-Text | Deepgram (Recommended), Whisper, AssemblyAI |
+| LLM Model | Groq Llama 3.1 8B/70B, OpenRouter Llama 70B, DeepSeek Chat, Claude 3 Haiku |
+
+### End-to-End Test Results
+- API POST /assistants returns all new fields ✓
+- Frontend form renders all dropdowns ✓
+- Advanced Settings toggle works ✓
+- Assistant creation with all fields successful ✓
 
 ## Completed
 
