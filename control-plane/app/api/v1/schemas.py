@@ -36,6 +36,9 @@ class AssistantBase(BaseModel):
     system_prompt: str = Field(..., min_length=1)
     minimax_voice_id: str = Field(default="mallory", max_length=50)
     llm_model: str = Field(default="groq/llama-3.1-8b-instant", max_length=100)
+    stt_provider: str = Field(default="deepgram", max_length=50)
+    structured_output_schema: Optional[str] = Field(None, description="JSON schema for structured output")
+    webhook_url: Optional[str] = Field(None, max_length=500, description="Webhook URL for call completion notifications")
     first_message: Optional[str] = None
 
 
@@ -48,6 +51,9 @@ class AssistantUpdate(BaseModel):
     system_prompt: Optional[str] = Field(None, min_length=1)
     minimax_voice_id: Optional[str] = Field(None, max_length=50)
     llm_model: Optional[str] = Field(None, max_length=100)
+    stt_provider: Optional[str] = Field(None, max_length=50)
+    structured_output_schema: Optional[str] = Field(None, description="JSON schema for structured output")
+    webhook_url: Optional[str] = Field(None, max_length=500, description="Webhook URL for call completion notifications")
     first_message: Optional[str] = None
 
 

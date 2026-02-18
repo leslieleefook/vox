@@ -55,6 +55,9 @@ class Assistant(Base):
         String(100),
         default="meta-llama/llama-3.1-70b-instruct"
     )
+    stt_provider: Mapped[str] = mapped_column(String(50), default="deepgram")
+    structured_output_schema: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    webhook_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     first_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(

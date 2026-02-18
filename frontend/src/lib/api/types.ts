@@ -19,6 +19,9 @@ export interface Assistant {
   system_prompt: string
   minimax_voice_id: string
   llm_model: string
+  stt_provider: string
+  structured_output_schema: string | null
+  webhook_url: string | null
   first_message: string | null
   created_at: string
   updated_at: string
@@ -30,6 +33,9 @@ export interface AssistantCreate {
   client_id: string
   minimax_voice_id?: string
   llm_model?: string
+  stt_provider?: string
+  structured_output_schema?: string | null
+  webhook_url?: string | null
   first_message?: string | null
 }
 
@@ -38,6 +44,9 @@ export interface AssistantUpdate {
   system_prompt?: string
   minimax_voice_id?: string
   llm_model?: string
+  stt_provider?: string
+  structured_output_schema?: string | null
+  webhook_url?: string | null
   first_message?: string | null
 }
 

@@ -6,7 +6,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Loader2 } from 'lucide-react'
+import { X, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { VoxCard, VoxButton, VoxInput } from '@/components/vox'
 import type { Assistant, AssistantCreate, AssistantUpdate } from '@/lib/api'
@@ -20,17 +20,39 @@ interface AssistantFormModalProps {
   isLoading?: boolean
 }
 
-const DEFAULT_VOICE_OPTIONS = [
+const VOICE_OPTIONS = [
   { value: 'mallory', label: 'Mallory (Female)' },
   { value: 'wise_man', label: 'Wise Man (Male)' },
   { value: 'friendly_girl', label: 'Friendly Girl (Female)' },
+  { value: 'seraphina', label: 'Seraphina (Female)' },
+  { value: 'alex', label: 'Alex (Male)' },
 ]
 
-const DEFAULT_MODEL_OPTIONS = [
+const LLM_MODEL_OPTIONS = [
   { value: 'groq/llama-3.1-8b-instant', label: 'Llama 3.1 8B (Groq) - Fast' },
+  { value: 'groq/llama-3.1-70b-versatile', label: 'Llama 3.1 70B (Groq)' },
   { value: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B (OpenRouter)' },
   { value: 'deepseek/deepseek-chat', label: 'DeepSeek Chat' },
+  { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku (OpenRouter)' },
 ]
+
+const STT_PROVIDER_OPTIONS = [
+  { value: 'deepgram', label: 'Deepgram (Recommended)' },
+  { value: 'whisper', label: 'OpenAI Whisper' },
+  { value: 'assemblyai', label: 'AssemblyAI' },
+]
+
+const DEFAULT_STRUCTURED_OUTPUT = `{
+  "type": "object",
+  "properties": {
+    "summary": { "type": "string" },
+    "sentiment": { "type": "string", "enum": ["positive", "neutral", "negative"] },
+    "action_items": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}`
 
 export function AssistantFormModal({
   isOpen,
@@ -45,9 +67,13 @@ export function AssistantFormModal({
     system_prompt: '',
     minimax_voice_id: 'mallory',
     llm_model: 'groq/llama-3.1-8b-instant',
+    stt_provider: 'deepgram',
+    structured_output_schema: '',
+    webhook_url: '',
     first_message: '',
   })
   const [error, setError] = useState<string | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   // Populate form when editing
   useEffect(() => {
@@ -57,8 +83,15 @@ export function AssistantFormModal({
         system_prompt: assistant.system_prompt,
         minimax_voice_id: assistant.minimax_voice_id || 'mallory',
         llm_model: assistant.llm_model || 'groq/llama-3.1-8b-instant',
+        stt_provider: assistant.stt_provider || 'deepgram',
+        structured_output_schema: assistant.structured_output_schema || '',
+        webhook_url: assistant.webhook_url || '',
         first_message: assistant.first_message || '',
       })
+      // Show advanced if any advanced field has data
+      if (assistant.structured_output_schema || assistant.webhook_url) {
+        setShowAdvanced(true)
+      }
     } else {
       // Reset form for new assistant
       setFormData({
@@ -66,8 +99,12 @@ export function AssistantFormModal({
         system_prompt: '',
         minimax_voice_id: 'mallory',
         llm_model: 'groq/llama-3.1-8b-instant',
+        stt_provider: 'deepgram',
+        structured_output_schema: '',
+        webhook_url: '',
         first_message: '',
       })
+      setShowAdvanced(false)
     }
     setError(null)
   }, [assistant, isOpen])
@@ -85,25 +122,46 @@ export function AssistantFormModal({
       return
     }
 
+    // Validate JSON schema if provided
+    if (formData.structured_output_schema.trim()) {
+      try {
+        JSON.parse(formData.structured_output_schema)
+      } catch {
+        setError('Structured output schema must be valid JSON')
+        return
+      }
+    }
+
+    // Validate webhook URL if provided
+    if (formData.webhook_url.trim()) {
+      try {
+        new URL(formData.webhook_url)
+      } catch {
+        setError('Webhook URL must be a valid URL')
+        return
+      }
+    }
+
     try {
+      const baseData = {
+        name: formData.name,
+        system_prompt: formData.system_prompt,
+        minimax_voice_id: formData.minimax_voice_id,
+        llm_model: formData.llm_model,
+        stt_provider: formData.stt_provider,
+        structured_output_schema: formData.structured_output_schema.trim() || null,
+        webhook_url: formData.webhook_url.trim() || null,
+        first_message: formData.first_message.trim() || null,
+      }
+
       if (assistant) {
         // Update existing assistant
-        await onSubmit({
-          name: formData.name,
-          system_prompt: formData.system_prompt,
-          minimax_voice_id: formData.minimax_voice_id,
-          llm_model: formData.llm_model,
-          first_message: formData.first_message || null,
-        })
+        await onSubmit(baseData)
       } else {
         // Create new assistant
         await onSubmit({
-          name: formData.name,
-          system_prompt: formData.system_prompt,
+          ...baseData,
           client_id: clientId,
-          minimax_voice_id: formData.minimax_voice_id,
-          llm_model: formData.llm_model,
-          first_message: formData.first_message || null,
         })
       }
       onClose()
@@ -126,7 +184,7 @@ export function AssistantFormModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
           onClick={(e) => {
             if (e.target === e.currentTarget) onClose()
           }}
@@ -136,7 +194,7 @@ export function AssistantFormModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="w-full max-w-lg"
+            className="w-full max-w-2xl my-8"
           >
             <VoxCard className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -155,6 +213,7 @@ export function AssistantFormModal({
                   </div>
                 )}
 
+                {/* Basic Settings */}
                 <div>
                   <label className="block text-sm text-slate-400 mb-1">Name</label>
                   <VoxInput
@@ -190,9 +249,10 @@ export function AssistantFormModal({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Voice & AI Settings */}
+                <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm text-slate-400 mb-1">Voice</label>
+                    <label className="block text-sm text-slate-400 mb-1">Voice (TTS)</label>
                     <select
                       name="minimax_voice_id"
                       value={formData.minimax_voice_id}
@@ -200,7 +260,24 @@ export function AssistantFormModal({
                       disabled={isLoading}
                       className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-vox-idle/50 focus:border-vox-idle/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
                     >
-                      {DEFAULT_VOICE_OPTIONS.map((opt) => (
+                      {VOICE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value} className="bg-slate-900">
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1">Speech-to-Text</label>
+                    <select
+                      name="stt_provider"
+                      value={formData.stt_provider}
+                      onChange={handleChange}
+                      disabled={isLoading}
+                      className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-vox-idle/50 focus:border-vox-idle/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
+                    >
+                      {STT_PROVIDER_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value} className="bg-slate-900">
                           {opt.label}
                         </option>
@@ -217,7 +294,7 @@ export function AssistantFormModal({
                       disabled={isLoading}
                       className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-vox-idle/50 focus:border-vox-idle/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
                     >
-                      {DEFAULT_MODEL_OPTIONS.map((opt) => (
+                      {LLM_MODEL_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value} className="bg-slate-900">
                           {opt.label}
                         </option>
@@ -225,6 +302,63 @@ export function AssistantFormModal({
                     </select>
                   </div>
                 </div>
+
+                {/* Advanced Settings Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                  {showAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  Advanced Settings (Structured Output & Webhooks)
+                </button>
+
+                {/* Advanced Settings */}
+                <AnimatePresence>
+                  {showAdvanced && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-4 overflow-hidden"
+                    >
+                      <div>
+                        <label className="block text-sm text-slate-400 mb-1">
+                          Structured Output Schema (JSON)
+                        </label>
+                        <textarea
+                          name="structured_output_schema"
+                          value={formData.structured_output_schema}
+                          onChange={handleChange}
+                          placeholder={DEFAULT_STRUCTURED_OUTPUT}
+                          disabled={isLoading}
+                          rows={6}
+                          className="flex w-full rounded-lg border border-white/10 bg-white/5 backdrop-blur-md px-3 py-2 text-sm text-white font-mono placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-vox-idle/50 focus:border-vox-idle/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 resize-none"
+                        />
+                        <p className="text-xs text-slate-500 mt-1">
+                          Define a JSON schema for structured call analysis output
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-slate-400 mb-1">
+                          Webhook URL
+                        </label>
+                        <VoxInput
+                          name="webhook_url"
+                          value={formData.webhook_url}
+                          onChange={handleChange}
+                          placeholder="https://your-server.com/webhook/call-ended"
+                          disabled={isLoading}
+                        />
+                        <p className="text-xs text-slate-500 mt-1">
+                          Receive POST requests with call analysis when calls end
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <div className="flex gap-3 pt-4">
                   <VoxButton
