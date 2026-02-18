@@ -6,7 +6,10 @@ from livekit.api import RoomServiceClient, CreateRoomRequest
 
 from app.config import settings
 from app.pipeline import run_bot
-from app.services import DeepgramSTTService, MinimaxTTSService, OpenRouterService
+from app.services import (
+    DeepgramSTTService, MinimaxTTSService, OpenRouterService,
+    tts_cache, prewarm_tts_cache
+)
 
 structlog.configure(
     processors=[
@@ -23,6 +26,9 @@ async def prewarm_connections():
     """Pre-warm connections to reduce first-request latency."""
     logger.info("Pre-warming connections...")
 
+    # Connect to Redis for TTS caching
+    await tts_cache.connect()
+
     # Pre-warm shared HTTP clients
     await MinimaxTTSService.get_shared_client()
     await OpenRouterService.get_shared_client()
@@ -35,6 +41,27 @@ async def prewarm_connections():
         )
 
     logger.info("Connections pre-warmed successfully")
+
+
+async def prewarm_tts():
+    """Pre-warm TTS cache with common phrases."""
+    if not settings.tts_cache_enabled:
+        logger.info("TTS caching disabled, skipping pre-warm")
+        return
+
+    # Default voice IDs to pre-warm
+    # In production, this could be fetched from control plane
+    default_voices = ["mallory", "wise_male", "wise_female", "engaging_adam"]
+
+    # Filter to only voices that exist (skip if no API key)
+    if not settings.minimax_api_key:
+        logger.warning("No Minimax API key, skipping TTS pre-warm")
+        return
+
+    try:
+        await prewarm_tts_cache(default_voices)
+    except Exception as e:
+        logger.warning("TTS pre-warm failed (non-critical)", error=str(e))
 
 
 class AgentWorker:
@@ -56,6 +83,9 @@ class AgentWorker:
 
         # Pre-warm connections for reduced latency
         await prewarm_connections()
+
+        # Pre-warm TTS cache with common phrases (runs in background)
+        asyncio.create_task(prewarm_tts())
 
         # Initialize LiveKit client
         self.livekit_client = RoomServiceClient(
@@ -80,6 +110,9 @@ class AgentWorker:
             await bot.stop()
 
         self.active_bots.clear()
+
+        # Disconnect TTS cache
+        await tts_cache.disconnect()
 
     async def _poll_rooms(self):
         """Poll for new LiveKit rooms."""

@@ -4,7 +4,11 @@ import struct
 from typing import AsyncGenerator, Optional, ClassVar
 import httpx
 import json
+import structlog
 from app.config import settings
+from app.services.tts_cache import tts_cache
+
+logger = structlog.get_logger()
 
 
 class MinimaxTTSService:
@@ -18,6 +22,7 @@ class MinimaxTTSService:
     - HTTP/2 connection pooling for reduced latency
     - Persistent client with keep-alive
     - Pre-warmed connections
+    - Redis-based caching for common phrases
     """
 
     # Shared client pool for connection reuse
@@ -60,18 +65,33 @@ class MinimaxTTSService:
     async def stream_tts(
         self,
         text: str,
-        speed: float = 1.0
+        speed: float = 1.0,
+        use_cache: bool = True
     ) -> AsyncGenerator[bytes, None]:
         """
         Stream TTS audio as PCM chunks.
 
+        Checks cache first for common phrases to reduce latency.
+
         Args:
             text: Text to synthesize
             speed: Speech speed multiplier
+            use_cache: Whether to check/use cache (default True)
 
         Yields:
             PCM audio chunks (16-bit, 16kHz, mono)
         """
+        # Check cache first
+        if use_cache:
+            cached_audio = await tts_cache.get(text, self.voice_id, speed)
+            if cached_audio:
+                logger.info("TTS cache hit, using cached audio", text_preview=text[:30])
+                # Yield cached audio in chunks for consistent interface
+                chunk_size = 4096  # ~128ms of audio at 16kHz
+                for i in range(0, len(cached_audio), chunk_size):
+                    yield cached_audio[i:i + chunk_size]
+                return
+
         payload = {
             "model": "speech-01-turbo",
             "text": text,
@@ -97,6 +117,10 @@ class MinimaxTTSService:
             url = f"{self.base_url}/text_to_speech?GroupId={self.group_id}"
 
         client = await self.get_shared_client()
+
+        # Collect audio for caching if enabled
+        audio_collector = [] if use_cache else None
+
         async with client.stream(
             "POST",
             url,
@@ -106,8 +130,16 @@ class MinimaxTTSService:
             response.raise_for_status()
             async for chunk in response.aiter_bytes():
                 if chunk:
+                    if audio_collector is not None:
+                        audio_collector.append(chunk)
                     # Minimax streams raw PCM data
                     yield chunk
+
+        # Cache the audio if collected
+        if audio_collector and use_cache:
+            full_audio = b"".join(audio_collector)
+            await tts_cache.set(text, self.voice_id, full_audio, speed)
+            logger.debug("TTS audio cached", text_preview=text[:30], size=len(full_audio))
 
     async def synthesize(
         self,

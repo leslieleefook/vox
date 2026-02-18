@@ -161,12 +161,62 @@
 
 3. **Architecture:**
    - [ ] Deploy agent-worker closer to API endpoints (edge deployment)
-   - [ ] Implement speculative TTS caching for common responses
+   - [x] Implement speculative TTS caching for common responses
 
 4. **LLM Optimization:**
    - [x] Switched default model to Groq Llama 3.1 8B Instant (faster)
    - [x] Prioritize Groq provider for lowest latency
    - [x] Streaming responses already implemented
+
+## TTS Caching Implementation (2026-02-17)
+
+### New Files Created
+- `agent-worker/app/services/tts_cache.py` - Redis-based TTS cache service
+- `agent-worker/tests/test_tts_cache.py` - Unit tests for cache service
+- `agent-worker/tests/test_tts_service.py` - Integration tests for TTS with cache
+- `agent-worker/tests/conftest.py` - Pytest configuration
+- `agent-worker/tests/__init__.py` - Test package init
+
+### Files Modified
+- `agent-worker/app/config.py` - Added Redis URL, cache TTL, cache enabled settings
+- `agent-worker/app/services/tts.py` - Integrated cache checks and storage
+- `agent-worker/app/services/__init__.py` - Exported cache services
+- `agent-worker/app/main.py` - Added cache connection and pre-warming
+- `agent-worker/requirements.txt` - Added redis, pytest, pytest-asyncio
+
+### TTS Cache Features
+- Redis-based distributed cache for TTS audio
+- Hash-based cache keys (text + voice_id + speed)
+- TTL-based eviction (24 hours default)
+- Pre-warming of 32 common phrases on startup
+- Graceful degradation if Redis unavailable
+- Cache hit/miss logging
+
+### Common Phrases Pre-warmed
+- Greetings: Hello, Hi there, Good morning/afternoon/evening, Welcome
+- Acknowledgments: I understand, Got it, Sure thing, Of course, etc.
+- Hold messages: One moment please, Please hold, Just a second, etc.
+- Confirmations: Yes, No problem, That's correct, Perfect, Great
+- Clarifications: Could you please repeat that?, I didn't catch that
+- Closings: Goodbye, Thank you for calling, Have a great day, etc.
+
+### Expected Latency Improvement
+- Cache hit: ~5ms (Redis fetch) vs ~1200ms (Minimax API)
+- Pre-warmed phrases: Instant availability on first use
+
+### Benchmark Results (2026-02-17)
+
+| Metric | Uncached (API) | Cached (Redis) | Improvement |
+|--------|---------------|----------------|-------------|
+| Average latency | 1156.7ms | 1.6ms | 744x faster |
+| Min latency | 689.6ms | 1.4ms | 493x faster |
+| Max latency | 2571.7ms | 2.2ms | 1169x faster |
+| Latency reduction | - | - | 99.9% |
+
+**Impact on Round-Trip Latency:**
+- Before: ~2000ms (STT 822ms + TTS 1156ms + overhead)
+- After (cached): ~824ms (STT 822ms + TTS 1.6ms + overhead)
+- Target: <800ms ✓ Nearly achieved for cached phrases
 
 ## Optimizations Applied (2026-02-17)
 

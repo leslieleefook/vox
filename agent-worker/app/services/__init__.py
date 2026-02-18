@@ -6,10 +6,15 @@ from app.services.vad import (
     WebRTCVADService, VADState,
     create_vad_service, create_vad_state
 )
+from app.services.tts_cache import (
+    TTSCacheService, tts_cache,
+    prewarm_tts_cache, get_common_phrases
+)
 
 __all__ = [
     "OpenRouterService", "create_llm_service",
     "MinimaxTTSService", "create_tts_service",
     "DeepgramSTTService", "create_stt_service",
-    "WebRTCVADService", "VADState", "create_vad_service", "create_vad_state"
+    "WebRTCVADService", "VADState", "create_vad_service", "create_vad_state",
+    "TTSCacheService", "tts_cache", "prewarm_tts_cache", "get_common_phrases"
 ]
