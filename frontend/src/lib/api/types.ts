@@ -119,3 +119,83 @@ export interface HealthResponse {
 export interface ApiError {
   detail: string
 }
+
+// Tool types
+export interface ServerConfig {
+  url: string
+  timeoutSeconds: number
+  credentialId: string | null
+  headers: Array<{ key: string; value: string }>
+  encryption: {
+    paths: string[]
+  }
+}
+
+export interface McpConfig {
+  protocol: 'shttp' | 'sse'
+}
+
+export interface ToolMessage {
+  trigger: 'on_start' | 'on_success' | 'on_error'
+  message: string
+}
+
+export interface Tool {
+  id: string
+  client_id: string
+  name: string
+  description: string | null
+  type: string
+  server_config: string // JSON string
+  mcp_config: string // JSON string
+  messages: string | null // JSON string
+  created_at: string
+  updated_at: string
+}
+
+export interface ToolCreate {
+  client_id: string
+  name: string
+  description?: string | null
+  type?: string
+  server_config: string
+  mcp_config: string
+  messages?: string | null
+}
+
+export interface ToolUpdate {
+  name?: string
+  description?: string | null
+  type?: string
+  server_config?: string
+  mcp_config?: string
+  messages?: string | null
+}
+
+// Credential types
+export interface Credential {
+  id: string
+  client_id: string
+  name: string
+  type: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CredentialCreate {
+  client_id: string
+  name: string
+  type: string
+  value: string
+}
+
+export interface CredentialUpdate {
+  name?: string
+  type?: string
+  value?: string
+}
+
+export interface CredentialListResponse {
+  items: Credential[]
+  total: number
+}

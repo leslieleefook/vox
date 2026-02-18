@@ -9,7 +9,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Wrench
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -17,6 +18,7 @@ import { VoxButton } from '@/components/vox'
 
 const navItems = [
   { href: '/assistants', label: 'Assistants', icon: Bot },
+  { href: '/tools', label: 'Tools', icon: Wrench },
   { href: '/calls', label: 'Call Logs', icon: Phone },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/settings', label: 'Settings', icon: Settings },

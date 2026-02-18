@@ -5,7 +5,9 @@ from app.api.v1.schemas import (
     AssistantCreate, AssistantUpdate, AssistantResponse,
     PhoneNumberCreate, PhoneNumberResponse,
     CallLogCreate, CallLogResponse, CallLogListResponse,
-    HealthResponse
+    HealthResponse,
+    ToolCreate, ToolUpdate, ToolResponse, ToolListResponse,
+    CredentialCreate, CredentialUpdate, CredentialResponse, CredentialListResponse
 )
 
 __all__ = [
@@ -14,5 +16,7 @@ __all__ = [
     "AssistantCreate", "AssistantUpdate", "AssistantResponse",
     "PhoneNumberCreate", "PhoneNumberResponse",
     "CallLogCreate", "CallLogResponse", "CallLogListResponse",
-    "HealthResponse"
+    "HealthResponse",
+    "ToolCreate", "ToolUpdate", "ToolResponse", "ToolListResponse",
+    "CredentialCreate", "CredentialUpdate", "CredentialResponse", "CredentialListResponse"
 ]

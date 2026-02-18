@@ -1,8 +1,115 @@
 # Project Vox - Progress Tracker
 
 ## Current Status
-**Phase:** Model Configuration Module - Completed
+**Phase:** Tools (MCP) Configuration Module - Completed
 **Last Updated:** 2026-02-18
+
+## Tools (MCP) Configuration Module (2026-02-18)
+
+### New Database Tables
+- `tools` - MCP Tool configuration for assistants
+  - id, client_id, name, description, type
+  - server_config (JSON), mcp_config (JSON), messages (JSON array)
+- `credentials` - Secure credential storage for tools
+  - id, client_id, name, type, value_encrypted
+
+### Backend Files Created
+- `control-plane/app/models/models.py` - Added Tool and Credential models
+- `control-plane/app/api/v1/schemas.py` - Added Tool/Credential Pydantic schemas
+- `control-plane/app/api/v1/endpoints.py` - Added CRUD endpoints for /tools and /credentials
+- `control-plane/app/services/encryption.py` - Fernet encryption for credential storage
+- `control-plane/alembic/versions/005_tools_credentials.py` - DB migration
+
+### Frontend Files Created
+- `frontend/src/app/(dashboard)/tools/page.tsx` - Tools list page
+- `frontend/src/app/(dashboard)/tools/[id]/page.tsx` - Tool editor page
+- `frontend/src/components/tools/ToolEditor.tsx` - Main tool editor component
+- `frontend/src/components/tools/ToolSettingsSection.tsx` - Tool name/description
+- `frontend/src/components/tools/ServerSettingsSection.tsx` - URL, timeout, headers, encryption
+- `frontend/src/components/tools/McpSettingsSection.tsx` - Protocol selection (SHTTP/SSE)
+- `frontend/src/components/tools/MessagesSection.tsx` - Dynamic messages list
+- `frontend/src/components/tools/DynamicList.tsx` - Reusable add/remove list component
+- `frontend/src/components/tools/ProtocolCard.tsx` - Radio card for protocol selection
+- `frontend/src/components/ui/accordion.tsx` - Accordion component
+- `frontend/src/lib/api/tools.ts` - Tool API service
+- `frontend/src/lib/api/credentials.ts` - Credential API service
+- `frontend/src/lib/constants/toolTypes.ts` - Tool type definitions
+
+### Files Modified
+- `control-plane/app/models/__init__.py` - Export Tool, Credential
+- `control-plane/app/api/v1/__init__.py` - Export new schemas
+- `control-plane/app/services/__init__.py` - Export encryption functions
+- `control-plane/requirements.txt` - Added cryptography
+- `frontend/src/lib/api/types.ts` - Added Tool, Credential interfaces
+- `frontend/src/app/(dashboard)/layout.tsx` - Added Tools navigation link
+
+### Tool Configuration Features
+- Tool name validation (alphanumeric, underscore, hyphen only)
+- Server URL input with validation
+- Timeout setting (1-300 seconds)
+- Credential dropdown for authorization
+- Dynamic HTTP headers (add/remove)
+- Encryption paths for sensitive JSON fields
+- MCP Protocol selection (SHTTP vs SSE radio cards)
+- Conversational messages (On Start, On Success, On Error)
+- Save/Delete tool functionality
+
+### JSON Schema Examples
+
+**server_config:**
+```json
+{
+  "url": "https://api.example.com/function",
+  "timeoutSeconds": 20,
+  "credentialId": null,
+  "headers": [{"key": "X-Custom-Header", "value": "custom-value"}],
+  "encryption": {"paths": ["user.ssn", "payment.cardNumber"]}
+}
+```
+
+**mcp_config:**
+```json
+{"protocol": "shttp"}
+```
+
+**messages:**
+```json
+[
+  {"trigger": "on_start", "message": "Let me look that up for you..."},
+  {"trigger": "on_success", "message": "I found what you need."},
+  {"trigger": "on_error", "message": "Sorry, I couldn't complete that request."}
+]
+```
+
+### API Endpoints Added
+- `POST /api/v1/tools` - Create tool
+- `GET /api/v1/tools` - List tools (paginated, filterable by client_id)
+- `GET /api/v1/tools/{id}` - Get tool
+- `PATCH /api/v1/tools/{id}` - Update tool
+- `DELETE /api/v1/tools/{id}` - Delete tool
+- `POST /api/v1/credentials` - Create credential (encrypts value)
+- `GET /api/v1/credentials` - List credentials (without values)
+- `GET /api/v1/credentials/{id}` - Get credential (without value)
+- `PATCH /api/v1/credentials/{id}` - Update credential
+- `DELETE /api/v1/credentials/{id}` - Delete credential
+
+### End-to-End Test Results
+- Migration 005_tools_credentials applied successfully ✓
+- API POST /tools creates tool ✓
+- API GET /tools returns tools list ✓
+- API POST /credentials creates encrypted credential ✓
+- API GET /credentials returns credentials (without values) ✓
+- Frontend TypeScript compiles without errors ✓
+- Frontend build successful ✓
+- ESLint passes with no warnings ✓
+
+## Next Steps
+1. Tool testing feature - Test button functionality
+2. Tool code view - JSON preview
+3. Credential creation flow - Full credential manager
+4. Tool-to-Assistant linking - Associate tools with assistants
+
+---
 
 ## Model Configuration Module (2026-02-18)
 

@@ -141,3 +141,79 @@ class HealthResponse(BaseModel):
     database: str
     redis: str
     version: str = "1.0.0"
+
+
+# Tool schemas
+class ToolBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$",
+                      description="Tool function name (alphanumeric, underscore, hyphen only)")
+    description: Optional[str] = Field(None, max_length=1000)
+    type: str = Field(default="mcp", max_length=20, description="Tool type (mcp or future types)")
+    server_config: str = Field(..., description="JSON: {url, timeoutSeconds, credentialId, headers, encryption}")
+    mcp_config: str = Field(..., description="JSON: {protocol}")
+    messages: Optional[str] = Field(None, description="JSON array: [{trigger, message}]")
+
+
+class ToolCreate(ToolBase):
+    client_id: uuid.UUID
+
+
+class ToolUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")
+    description: Optional[str] = Field(None, max_length=1000)
+    type: Optional[str] = Field(None, max_length=20)
+    server_config: Optional[str] = None
+    mcp_config: Optional[str] = None
+    messages: Optional[str] = None
+
+
+class ToolResponse(ToolBase):
+    id: uuid.UUID
+    client_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ToolListResponse(BaseModel):
+    items: List["ToolResponse"]
+    total: int
+    page: int
+    page_size: int
+
+
+# Credential schemas
+class CredentialBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Display name for the credential")
+    type: str = Field(..., max_length=50, description="Credential type: bearer, api_key, basic")
+    value: str = Field(..., min_length=1, description="The credential value (will be encrypted)")
+
+
+class CredentialCreate(CredentialBase):
+    client_id: uuid.UUID
+
+
+class CredentialUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    type: Optional[str] = Field(None, max_length=50)
+    value: Optional[str] = Field(None, min_length=1)
+
+
+class CredentialResponse(BaseModel):
+    """Credential response - never includes the encrypted value."""
+    id: uuid.UUID
+    client_id: uuid.UUID
+    name: str
+    type: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CredentialListResponse(BaseModel):
+    items: List[CredentialResponse]
+    total: int

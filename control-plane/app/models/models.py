@@ -33,6 +33,16 @@ class Client(Base):
         back_populates="client",
         cascade="all, delete-orphan"
     )
+    tools: Mapped[list["Tool"]] = relationship(
+        "Tool",
+        back_populates="client",
+        cascade="all, delete-orphan"
+    )
+    credentials: Mapped[list["Credential"]] = relationship(
+        "Credential",
+        back_populates="client",
+        cascade="all, delete-orphan"
+    )
 
 
 class Assistant(Base):
@@ -136,4 +146,80 @@ class CallLog(Base):
         Index("ix_call_logs_client_id", "client_id"),
         Index("ix_call_logs_assistant_id", "assistant_id"),
         Index("ix_call_logs_created_at", "created_at"),
+    )
+
+
+class Tool(Base):
+    """MCP Tool configuration for assistants."""
+    __tablename__ = "tools"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    client_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clients.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Tool Settings
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    type: Mapped[str] = mapped_column(String(20), default="mcp")
+
+    # Server Settings (JSON)
+    server_config: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # MCP Settings (JSON)
+    mcp_config: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Messages (JSON array)
+    messages: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    client: Mapped["Client"] = relationship("Client", back_populates="tools")
+
+    __table_args__ = (
+        Index("ix_tools_client_id", "client_id"),
+    )
+
+
+class Credential(Base):
+    """Secure credential storage for tools."""
+    __tablename__ = "credentials"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    client_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clients.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    value_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    client: Mapped["Client"] = relationship("Client", back_populates="credentials")
+
+    __table_args__ = (
+        Index("ix_credentials_client_id", "client_id"),
     )

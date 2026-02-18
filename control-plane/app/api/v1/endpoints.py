@@ -6,14 +6,16 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Client, Assistant, PhoneNumber, CallLog
+from app.models import Client, Assistant, PhoneNumber, CallLog, Tool, Credential
 from app.services.redis_service import redis_service
 from app.api.v1.schemas import (
     ClientCreate, ClientUpdate, ClientResponse,
     AssistantCreate, AssistantUpdate, AssistantResponse,
     PhoneNumberCreate, PhoneNumberResponse,
     CallLogCreate, CallLogResponse, CallLogListResponse,
-    HealthResponse
+    HealthResponse,
+    ToolCreate, ToolUpdate, ToolResponse, ToolListResponse,
+    CredentialCreate, CredentialUpdate, CredentialResponse, CredentialListResponse
 )
 
 router = APIRouter()
@@ -329,3 +331,209 @@ async def get_call_log(
     if not call_log:
         raise HTTPException(status_code=404, detail="Call log not found")
     return call_log
+
+
+# Tool endpoints
+@router.post("/tools", response_model=ToolResponse, status_code=status.HTTP_201_CREATED)
+async def create_tool(
+    data: ToolCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new tool."""
+    # Verify client exists
+    result = await db.execute(select(Client).where(Client.id == data.client_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    tool = Tool(**data.model_dump())
+    db.add(tool)
+    await db.commit()
+    await db.refresh(tool)
+    return tool
+
+
+@router.get("/tools", response_model=ToolListResponse)
+async def list_tools(
+    client_id: Optional[uuid.UUID] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db)
+):
+    """List tools with pagination."""
+    query = select(Tool)
+    count_query = select(func.count(Tool.id))
+
+    if client_id:
+        query = query.where(Tool.client_id == client_id)
+        count_query = count_query.where(Tool.client_id == client_id)
+
+    # Get total count
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    # Get paginated results
+    offset = (page - 1) * page_size
+    query = query.order_by(Tool.created_at.desc()).offset(offset).limit(page_size)
+    result = await db.execute(query)
+    items = result.scalars().all()
+
+    return ToolListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size
+    )
+
+
+@router.get("/tools/{tool_id}", response_model=ToolResponse)
+async def get_tool(
+    tool_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a tool by ID."""
+    result = await db.execute(select(Tool).where(Tool.id == tool_id))
+    tool = result.scalar_one_or_none()
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+    return tool
+
+
+@router.patch("/tools/{tool_id}", response_model=ToolResponse)
+async def update_tool(
+    tool_id: uuid.UUID,
+    data: ToolUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Update a tool."""
+    result = await db.execute(select(Tool).where(Tool.id == tool_id))
+    tool = result.scalar_one_or_none()
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(tool, key, value)
+
+    await db.commit()
+    await db.refresh(tool)
+    return tool
+
+
+@router.delete("/tools/{tool_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tool(
+    tool_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete a tool."""
+    result = await db.execute(select(Tool).where(Tool.id == tool_id))
+    tool = result.scalar_one_or_none()
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+
+    await db.delete(tool)
+    await db.commit()
+
+
+# Credential endpoints
+@router.post("/credentials", response_model=CredentialResponse, status_code=status.HTTP_201_CREATED)
+async def create_credential(
+    data: CredentialCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new credential."""
+    # Verify client exists
+    result = await db.execute(select(Client).where(Client.id == data.client_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Encrypt the credential value
+    from app.services.encryption import encrypt_value
+    encrypted_value = encrypt_value(data.value)
+
+    credential = Credential(
+        client_id=data.client_id,
+        name=data.name,
+        type=data.type,
+        value_encrypted=encrypted_value
+    )
+    db.add(credential)
+    await db.commit()
+    await db.refresh(credential)
+    return credential
+
+
+@router.get("/credentials", response_model=CredentialListResponse)
+async def list_credentials(
+    client_id: Optional[uuid.UUID] = Query(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """List credentials (without values)."""
+    query = select(Credential)
+    count_query = select(func.count(Credential.id))
+
+    if client_id:
+        query = query.where(Credential.client_id == client_id)
+        count_query = count_query.where(Credential.client_id == client_id)
+
+    result = await db.execute(query)
+    items = result.scalars().all()
+
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    return CredentialListResponse(items=items, total=total)
+
+
+@router.get("/credentials/{credential_id}", response_model=CredentialResponse)
+async def get_credential(
+    credential_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a credential by ID (without value)."""
+    result = await db.execute(select(Credential).where(Credential.id == credential_id))
+    credential = result.scalar_one_or_none()
+    if not credential:
+        raise HTTPException(status_code=404, detail="Credential not found")
+    return credential
+
+
+@router.patch("/credentials/{credential_id}", response_model=CredentialResponse)
+async def update_credential(
+    credential_id: uuid.UUID,
+    data: CredentialUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Update a credential."""
+    result = await db.execute(select(Credential).where(Credential.id == credential_id))
+    credential = result.scalar_one_or_none()
+    if not credential:
+        raise HTTPException(status_code=404, detail="Credential not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+
+    # If value is being updated, encrypt it
+    if "value" in update_data:
+        from app.services.encryption import encrypt_value
+        update_data["value_encrypted"] = encrypt_value(update_data.pop("value"))
+
+    for key, value in update_data.items():
+        setattr(credential, key, value)
+
+    await db.commit()
+    await db.refresh(credential)
+    return credential
+
+
+@router.delete("/credentials/{credential_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_credential(
+    credential_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete a credential."""
+    result = await db.execute(select(Credential).where(Credential.id == credential_id))
+    credential = result.scalar_one_or_none()
+    if not credential:
+        raise HTTPException(status_code=404, detail="Credential not found")
+
+    await db.delete(credential)
+    await db.commit()
