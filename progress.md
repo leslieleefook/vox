@@ -51,6 +51,25 @@
 - Frontend build successful ✓
 - ESLint passes with no warnings ✓
 
+### Repository Cleanup (2026-02-19)
+
+**Files Added:**
+- `frontend/src/lib/supabase/client.ts` - Browser Supabase client
+- `frontend/src/lib/supabase/server.ts` - Server Supabase client
+- `frontend/src/lib/supabase/database.types.ts` - TypeScript type definitions
+- `frontend/src/lib/utils.ts` - shadcn/ui cn() utility function
+- `frontend/tests/tools.spec.ts` - Playwright E2E tests for Tools page
+
+**Files Removed:**
+- Screenshot files (7 *.png files in frontend/)
+- Windows artifact files (nul files)
+- Build cache (tsconfig.tsbuildinfo)
+
+**.gitignore Updates:**
+- Added `supabase/volumes/` (database data)
+- Added `*.tsbuildinfo` (TypeScript build cache)
+- Added `next-env.d.ts` (auto-generated Next.js TypeScript references)
+
 ## Next Steps
 1. Tool testing feature - Test button functionality
 2. Tool code view - JSON preview
