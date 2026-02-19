@@ -53,6 +53,7 @@ class AssistantBase(BaseModel):
 
 class AssistantCreate(AssistantBase):
     client_id: uuid.UUID
+    tool_ids: Optional[List[uuid.UUID]] = Field(None, description="List of tool IDs to associate with the assistant")
 
 
 class AssistantUpdate(BaseModel):
@@ -72,11 +73,14 @@ class AssistantUpdate(BaseModel):
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(None, ge=1, le=32000)
     rag_file_ids: Optional[str] = None
+    # Tool association
+    tool_ids: Optional[List[uuid.UUID]] = Field(None, description="List of tool IDs to associate with the assistant")
 
 
 class AssistantResponse(AssistantBase):
     id: uuid.UUID
     client_id: uuid.UUID
+    tool_ids: List[uuid.UUID] = Field(default_factory=list, description="List of associated tool IDs")
     created_at: datetime
     updated_at: datetime
 
@@ -217,3 +221,13 @@ class CredentialResponse(BaseModel):
 class CredentialListResponse(BaseModel):
     items: List[CredentialResponse]
     total: int
+
+
+# Tool Brief schema for minimal tool info in assistant responses
+class ToolBrief(BaseModel):
+    """Minimal tool information for assistant responses."""
+    id: uuid.UUID
+    name: str
+
+    class Config:
+        from_attributes = True

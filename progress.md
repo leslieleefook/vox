@@ -1,8 +1,62 @@
 # Project Vox - Progress Tracker
 
 ## Current Status
-**Phase:** Tools (MCP) Configuration Module - Completed
-**Last Updated:** 2026-02-18
+**Phase:** Tool-to-Assistant Linking - Completed
+**Last Updated:** 2026-02-19
+
+## Tool-to-Assistant Linking (2026-02-19)
+
+### New Database Table
+- `assistant_tools` - Many-to-many junction table
+  - assistant_id (FK to assistants.id, ON DELETE CASCADE)
+  - tool_id (FK to tools.id, ON DELETE CASCADE)
+  - created_at
+  - PRIMARY KEY (assistant_id, tool_id)
+
+### Backend Files Created
+- `control-plane/alembic/versions/006_assistant_tools.py` - DB migration
+
+### Backend Files Modified
+- `control-plane/app/models/models.py` - Added assistant_tools Table, Assistant.tools and Tool.assistants relationships
+- `control-plane/app/api/v1/schemas.py` - Added tool_ids to AssistantCreate/Update/Response, added ToolBrief schema
+- `control-plane/app/api/v1/endpoints.py` - Updated assistant CRUD to handle tool associations with direct junction table inserts
+
+### Frontend Files Created
+- `frontend/src/components/assistants/ToolsSelectionSection.tsx` - Collapsible accordion for tool selection
+
+### Frontend Files Modified
+- `frontend/src/lib/api/types.ts` - Added tool_ids to Assistant, AssistantCreate, AssistantUpdate; added ToolBrief
+- `frontend/src/lib/api/tools.ts` - Added listBrief() method for lightweight tool fetching
+- `frontend/src/components/assistants/AssistantFormModal.tsx` - Integrated ToolsSelectionSection
+
+### Features
+- Checkbox list of available tools in assistant form
+- Auto-expands when tools are already selected (editing)
+- Shows count badge of selected tools
+- Empty state when no tools available
+- Sync tool associations on create/update
+
+### API Changes
+- `POST /assistants` - Accepts optional `tool_ids` array
+- `PATCH /assistants/{id}` - Accepts optional `tool_ids` array (empty clears associations)
+- `GET /assistants/{id}` - Returns `tool_ids` array
+- `GET /assistants` - Returns `tool_ids` array for each assistant
+
+### End-to-End Test Results
+- Migration 006_assistant_tools applied successfully ✓
+- API POST /assistants with tool_ids creates associations ✓
+- API GET /assistants returns tool_ids ✓
+- API PATCH /assistants syncs tool associations ✓
+- Frontend TypeScript compiles without errors ✓
+- Frontend build successful ✓
+- ESLint passes with no warnings ✓
+
+## Next Steps
+1. Tool testing feature - Test button functionality
+2. Tool code view - JSON preview
+3. Credential creation flow - Full credential manager
+
+---
 
 ## Tools (MCP) Configuration Module (2026-02-18)
 
@@ -102,12 +156,6 @@
 - Frontend TypeScript compiles without errors ✓
 - Frontend build successful ✓
 - ESLint passes with no warnings ✓
-
-## Next Steps
-1. Tool testing feature - Test button functionality
-2. Tool code view - JSON preview
-3. Credential creation flow - Full credential manager
-4. Tool-to-Assistant linking - Associate tools with assistants
 
 ---
 

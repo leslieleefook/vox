@@ -4,6 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import Client, Assistant, PhoneNumber, CallLog, Tool, Credential
@@ -138,16 +139,48 @@ async def create_assistant(
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new assistant."""
+    from app.models.models import assistant_tools
+
     # Verify client exists
     result = await db.execute(select(Client).where(Client.id == data.client_id))
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Client not found")
 
-    assistant = Assistant(**data.model_dump())
+    # Extract tool_ids from data
+    tool_ids = data.tool_ids
+    assistant_data = data.model_dump(exclude={'tool_ids'})
+
+    assistant = Assistant(**assistant_data)
     db.add(assistant)
+    await db.flush()  # Get the assistant ID
+
+    # Associate tools if provided - insert directly into junction table
+    tool_ids_response = []
+    if tool_ids:
+        # Verify all tools exist
+        tools_result = await db.execute(select(Tool).where(Tool.id.in_(tool_ids)))
+        tools = tools_result.scalars().all()
+        if len(tools) != len(tool_ids):
+            raise HTTPException(status_code=400, detail="One or more tool IDs not found")
+        # Insert directly into junction table
+        for tool in tools:
+            await db.execute(
+                assistant_tools.insert().values(
+                    assistant_id=assistant.id,
+                    tool_id=tool.id
+                )
+            )
+        tool_ids_response = [t.id for t in tools]
+
     await db.commit()
     await db.refresh(assistant)
-    return assistant
+
+    # Return with tool_ids
+    response_data = {
+        **{c.name: getattr(assistant, c.name) for c in assistant.__table__.columns},
+        'tool_ids': tool_ids_response
+    }
+    return AssistantResponse(**response_data)
 
 
 @router.get("/assistants", response_model=List[AssistantResponse])
@@ -158,12 +191,23 @@ async def list_assistants(
     db: AsyncSession = Depends(get_db)
 ):
     """List assistants, optionally filtered by client."""
-    query = select(Assistant)
+    query = select(Assistant).options(selectinload(Assistant.tools))
     if client_id:
         query = query.where(Assistant.client_id == client_id)
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
-    return result.scalars().all()
+    assistants = result.scalars().all()
+
+    # Build response with tool_ids
+    responses = []
+    for assistant in assistants:
+        response_data = {
+            **{c.name: getattr(assistant, c.name) for c in assistant.__table__.columns},
+            'tool_ids': [t.id for t in assistant.tools]
+        }
+        responses.append(AssistantResponse(**response_data))
+
+    return responses
 
 
 @router.get("/assistants/{assistant_id}", response_model=AssistantResponse)
@@ -172,11 +216,21 @@ async def get_assistant(
     db: AsyncSession = Depends(get_db)
 ):
     """Get an assistant by ID."""
-    result = await db.execute(select(Assistant).where(Assistant.id == assistant_id))
+    result = await db.execute(
+        select(Assistant)
+        .options(selectinload(Assistant.tools))
+        .where(Assistant.id == assistant_id)
+    )
     assistant = result.scalar_one_or_none()
     if not assistant:
         raise HTTPException(status_code=404, detail="Assistant not found")
-    return assistant
+
+    # Build response with tool_ids
+    response_data = {
+        **{c.name: getattr(assistant, c.name) for c in assistant.__table__.columns},
+        'tool_ids': [t.id for t in assistant.tools]
+    }
+    return AssistantResponse(**response_data)
 
 
 @router.patch("/assistants/{assistant_id}", response_model=AssistantResponse)
@@ -186,21 +240,64 @@ async def update_assistant(
     db: AsyncSession = Depends(get_db)
 ):
     """Update an assistant."""
-    result = await db.execute(select(Assistant).where(Assistant.id == assistant_id))
+    from app.models.models import assistant_tools
+
+    result = await db.execute(
+        select(Assistant)
+        .options(selectinload(Assistant.tools))
+        .where(Assistant.id == assistant_id)
+    )
     assistant = result.scalar_one_or_none()
     if not assistant:
         raise HTTPException(status_code=404, detail="Assistant not found")
 
     update_data = data.model_dump(exclude_unset=True)
+
+    # Handle tool_ids separately
+    tool_ids = update_data.pop('tool_ids', None)
+
+    # Update scalar fields
     for key, value in update_data.items():
         setattr(assistant, key, value)
+
+    # Sync tool associations if tool_ids provided
+    tool_ids_response = [t.id for t in assistant.tools]
+    if tool_ids is not None:
+        # Delete existing associations
+        await db.execute(
+            assistant_tools.delete().where(assistant_tools.c.assistant_id == assistant_id)
+        )
+
+        if tool_ids:
+            # Verify all tools exist
+            tools_result = await db.execute(select(Tool).where(Tool.id.in_(tool_ids)))
+            tools = tools_result.scalars().all()
+            if len(tools) != len(tool_ids):
+                raise HTTPException(status_code=400, detail="One or more tool IDs not found")
+            # Insert new associations
+            for tool in tools:
+                await db.execute(
+                    assistant_tools.insert().values(
+                        assistant_id=assistant_id,
+                        tool_id=tool.id
+                    )
+                )
+            tool_ids_response = [t.id for t in tools]
+        else:
+            tool_ids_response = []
 
     # Invalidate cache
     await redis_service.invalidate_assistant(str(assistant_id))
 
     await db.commit()
     await db.refresh(assistant)
-    return assistant
+
+    # Build response with tool_ids
+    response_data = {
+        **{c.name: getattr(assistant, c.name) for c in assistant.__table__.columns},
+        'tool_ids': tool_ids_response
+    }
+    return AssistantResponse(**response_data)
 
 
 @router.delete("/assistants/{assistant_id}", status_code=status.HTTP_204_NO_CONTENT)

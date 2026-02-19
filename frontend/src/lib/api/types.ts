@@ -31,6 +31,8 @@ export interface Assistant {
   temperature: number
   max_tokens: number
   rag_file_ids: string | null
+  // Tool associations
+  tool_ids: string[]
   created_at: string
   updated_at: string
 }
@@ -53,6 +55,8 @@ export interface AssistantCreate {
   temperature?: number
   max_tokens?: number
   rag_file_ids?: string | null
+  // Tool associations
+  tool_ids?: string[]
 }
 
 export interface AssistantUpdate {
@@ -72,6 +76,8 @@ export interface AssistantUpdate {
   temperature?: number
   max_tokens?: number
   rag_file_ids?: string | null
+  // Tool associations
+  tool_ids?: string[]
 }
 
 export interface PhoneNumber {
@@ -198,4 +204,10 @@ export interface CredentialUpdate {
 export interface CredentialListResponse {
   items: Credential[]
   total: number
+}
+
+// Tool Brief for minimal tool info
+export interface ToolBrief {
+  id: string
+  name: string
 }

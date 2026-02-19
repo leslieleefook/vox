@@ -4,7 +4,7 @@
  */
 
 import api from './client'
-import type { Tool, ToolCreate, ToolUpdate, PaginatedResponse } from './types'
+import type { Tool, ToolCreate, ToolUpdate, PaginatedResponse, ToolBrief } from './types'
 
 export const toolsApi = {
   /**
@@ -19,6 +19,17 @@ export const toolsApi = {
     params.append('page_size', pageSize.toString())
     const query = params.toString() ? `?${params.toString()}` : ''
     return api.get<PaginatedResponse<Tool>>(`/api/v1/tools${query}`)
+  },
+
+  /**
+   * Fetch brief list of tools (id and name only) for selection dropdowns
+   */
+  async listBrief(clientId?: string): Promise<ToolBrief[]> {
+    const response = await this.list(clientId, 1, 1000)
+    return response.items.map((tool) => ({
+      id: tool.id,
+      name: tool.name,
+    }))
   },
 
   /**

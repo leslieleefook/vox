@@ -1,11 +1,23 @@
 """SQLAlchemy models for the Vox Control Plane."""
 import uuid
 from datetime import datetime
-from typing import Optional
-from sqlalchemy import String, Text, ForeignKey, DateTime, Integer, Index, Boolean, Float
+from typing import Optional, List
+from sqlalchemy import String, Text, ForeignKey, DateTime, Integer, Index, Boolean, Float, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from app.database import Base
+
+
+# Association table for Assistant-Tool many-to-many relationship
+assistant_tools = Table(
+    'assistant_tools',
+    Base.metadata,
+    Column('assistant_id', PG_UUID(as_uuid=True), ForeignKey('assistants.id', ondelete='CASCADE'), primary_key=True),
+    Column('tool_id', PG_UUID(as_uuid=True), ForeignKey('tools.id', ondelete='CASCADE'), primary_key=True),
+    Column('created_at', DateTime(), default=datetime.utcnow, nullable=False),
+    Index('ix_assistant_tools_assistant_id', 'assistant_id'),
+    Index('ix_assistant_tools_tool_id', 'tool_id'),
+)
 
 
 class Client(Base):
@@ -90,6 +102,12 @@ class Assistant(Base):
         "PhoneNumber",
         back_populates="assistant",
         cascade="all, delete-orphan"
+    )
+    tools: Mapped[List["Tool"]] = relationship(
+        "Tool",
+        secondary=assistant_tools,
+        back_populates="assistants",
+        lazy="raise"  # Prevent lazy loading - use explicit eager loading
     )
 
 
@@ -186,6 +204,11 @@ class Tool(Base):
 
     # Relationships
     client: Mapped["Client"] = relationship("Client", back_populates="tools")
+    assistants: Mapped[List["Assistant"]] = relationship(
+        "Assistant",
+        secondary=assistant_tools,
+        back_populates="tools"
+    )
 
     __table_args__ = (
         Index("ix_tools_client_id", "client_id"),

@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { VoxCard, VoxButton, VoxInput } from '@/components/vox'
 import { VoiceConfigSection } from '@/components/assistants/VoiceConfigSection'
 import { ModelConfigSection } from '@/components/assistants/ModelConfigSection'
+import { ToolsSelectionSection } from '@/components/assistants/ToolsSelectionSection'
 import type { Assistant, AssistantCreate, AssistantUpdate } from '@/lib/api'
 
 interface AssistantFormModalProps {
@@ -64,6 +65,8 @@ export function AssistantFormModal({
     first_message_mode: 'assistant-first',
     temperature: 0.7,
     max_tokens: 256,
+    // Tool associations
+    tool_ids: [] as string[],
   })
   const [error, setError] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -87,6 +90,8 @@ export function AssistantFormModal({
         first_message_mode: assistant.first_message_mode || 'assistant-first',
         temperature: assistant.temperature ?? 0.7,
         max_tokens: assistant.max_tokens ?? 256,
+        // Tool associations
+        tool_ids: assistant.tool_ids || [],
       })
       // Show advanced if any advanced field has data
       if (assistant.structured_output_schema || assistant.webhook_url) {
@@ -110,6 +115,8 @@ export function AssistantFormModal({
         first_message_mode: 'assistant-first',
         temperature: 0.7,
         max_tokens: 256,
+        // Tool associations
+        tool_ids: [],
       })
       setShowAdvanced(false)
     }
@@ -166,9 +173,13 @@ export function AssistantFormModal({
         first_message_mode: formData.first_message_mode,
         temperature: formData.temperature,
         max_tokens: formData.max_tokens,
+        // Tool associations
+        tool_ids: formData.tool_ids.length > 0 ? formData.tool_ids : undefined,
       }
 
       if (assistant) {
+        // For updates, always include tool_ids (even empty array to clear)
+        baseData.tool_ids = formData.tool_ids
         // Update existing assistant
         await onSubmit(baseData)
       } else {
@@ -197,6 +208,10 @@ export function AssistantFormModal({
 
   const handleModelConfigChange = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleToolIdsChange = (toolIds: string[]) => {
+    setFormData((prev) => ({ ...prev, tool_ids: toolIds }))
   }
 
   return (
@@ -284,6 +299,14 @@ export function AssistantFormModal({
                   temperature={formData.temperature}
                   maxTokens={formData.max_tokens}
                   onChange={handleModelConfigChange}
+                  disabled={isLoading}
+                />
+
+                {/* Tools Selection Section */}
+                <ToolsSelectionSection
+                  selectedToolIds={formData.tool_ids}
+                  clientId={clientId}
+                  onChange={handleToolIdsChange}
                   disabled={isLoading}
                 />
 
