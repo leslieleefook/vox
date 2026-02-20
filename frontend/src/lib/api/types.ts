@@ -211,3 +211,17 @@ export interface ToolBrief {
   id: string
   name: string
 }
+
+// Tool Test types
+export interface ToolTestRequest {
+  parameters?: Record<string, unknown>
+}
+
+export interface ToolTestResponse {
+  success: boolean
+  status_code: number | null
+  response_time_ms: number | null
+  response_body: string | null
+  error: string | null
+  error_type: string | null
+}

@@ -4,7 +4,7 @@
  */
 
 import api from './client'
-import type { Tool, ToolCreate, ToolUpdate, PaginatedResponse, ToolBrief } from './types'
+import type { Tool, ToolCreate, ToolUpdate, PaginatedResponse, ToolBrief, ToolTestRequest, ToolTestResponse } from './types'
 
 export const toolsApi = {
   /**
@@ -58,6 +58,14 @@ export const toolsApi = {
    */
   async delete(id: string): Promise<void> {
     return api.delete(`/api/v1/tools/${id}`)
+  },
+
+  /**
+   * Test a tool by making a request to its configured server
+   */
+  async test(id: string, parameters?: Record<string, unknown>): Promise<ToolTestResponse> {
+    const body: ToolTestRequest = parameters ? { parameters } : {}
+    return api.post<ToolTestResponse>(`/api/v1/tools/${id}/test`, body)
   },
 }
 

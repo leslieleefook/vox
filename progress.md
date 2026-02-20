@@ -1,8 +1,60 @@
 # Project Vox - Progress Tracker
 
 ## Current Status
-**Phase:** Tool-to-Assistant Linking - Completed
+**Phase:** Tool Testing Feature - Completed
 **Last Updated:** 2026-02-19
+
+## Tool Testing Feature (2026-02-19)
+
+### Backend Files Modified
+- `control-plane/app/api/v1/schemas.py` - Added ToolTestRequest, ToolTestResponse schemas
+- `control-plane/app/api/v1/endpoints.py` - Added POST /tools/{id}/test endpoint with credential resolution
+- `control-plane/requirements.txt` - Added pytest, pytest-asyncio for testing
+
+### Backend Files Created
+- `control-plane/tests/__init__.py` - Test package init
+- `control-plane/tests/conftest.py` - Pytest fixtures (mock_db, mock_tool, mock_credential, mock_httpx_response)
+- `control-plane/tests/test_tool_endpoint.py` - 12 test cases for tool test endpoint
+- `control-plane/pyproject.toml` - Pytest configuration
+
+### Frontend Files Created
+- `frontend/src/components/ui/dialog.tsx` - shadcn/ui Dialog component
+- `frontend/src/components/tools/ToolTestModal.tsx` - Tool test modal with JSON input and result display
+
+### Frontend Files Modified
+- `frontend/src/lib/api/types.ts` - Added ToolTestRequest, ToolTestResponse interfaces
+- `frontend/src/lib/api/tools.ts` - Added test() method to toolsApi
+- `frontend/src/components/tools/ToolEditor.tsx` - Integrated ToolTestModal, enabled Test button
+
+### Frontend Tests Modified
+- `frontend/tests/tools.spec.ts` - Added 6 E2E tests for tool testing feature
+
+### Features
+- Test button enabled for saved tools (disabled for new unsaved tools)
+- Test modal with JSON parameter input
+- Credential resolution and auth header injection (bearer, api_key, basic)
+- Custom headers from server_config
+- Response truncation (10KB limit)
+- Error handling for timeout, connection, and auth errors
+- Visual feedback with status icons and colored result panels
+
+### API Endpoint Added
+- `POST /api/v1/tools/{id}/test` - Test tool connectivity
+  - Accepts optional `parameters` object
+  - Returns `success`, `status_code`, `response_time_ms`, `response_body`, `error`, `error_type`
+
+### Test Results
+- Frontend TypeScript: ✓ Compiles without errors
+- Frontend Build: ✓ Successful (Next.js 14.1.0)
+- Frontend ESLint: ✓ No warnings or errors
+- Backend Tests: 12 test cases created (require database to run)
+
+## Next Steps
+1. Tool code view - JSON preview
+2. Credential creation flow - Full credential manager
+3. Run backend tests with database connection
+
+---
 
 ## Tool-to-Assistant Linking (2026-02-19)
 

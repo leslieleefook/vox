@@ -89,3 +89,116 @@ test.describe('Tool Editor Page', () => {
     await expect(authenticatedPage.getByLabel(/server url/i)).toBeVisible()
   })
 })
+
+test.describe('Tool Test Feature', () => {
+  test('test button should be disabled for new unsaved tool', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto(BASE_URL + '/tools/new')
+
+    const testButton = authenticatedPage.getByRole('button', { name: /^test$/i })
+    await expect(testButton).toBeDisabled()
+  })
+
+  test('test button should have tooltip for new tool', async ({ authenticatedPage }) => {
+    await authenticatedPage.goto(BASE_URL + '/tools/new')
+
+    const testButton = authenticatedPage.getByRole('button', { name: /^test$/i })
+
+    // Check the title attribute for tooltip
+    const title = await testButton.getAttribute('title')
+    expect(title).toContain('Save tool before testing')
+  })
+
+  test('should show test modal when test button is clicked on saved tool', async ({ authenticatedPage }) => {
+    // First, create a tool
+    await authenticatedPage.goto(BASE_URL + '/tools/new')
+
+    // Fill in required fields
+    await authenticatedPage.getByLabel(/tool name/i).fill('test_tool_for_testing')
+    await authenticatedPage.getByLabel(/description/i).fill('Tool for testing the test feature')
+
+    // Expand server settings and fill URL
+    await authenticatedPage.getByRole('button', { name: /server settings/i }).click()
+    await authenticatedPage.getByLabel(/server url/i).fill('https://httpbin.org/post')
+
+    // Save the tool
+    await authenticatedPage.getByRole('button', { name: /save/i }).click()
+
+    // Wait for navigation to the saved tool page
+    await authenticatedPage.waitForURL(/\/tools\/[a-f0-9-]+/)
+
+    // Test button should now be enabled
+    const testButton = authenticatedPage.getByRole('button', { name: /^test$/i })
+    await expect(testButton).toBeEnabled()
+
+    // Click the test button
+    await testButton.click()
+
+    // Modal should appear
+    await expect(authenticatedPage.getByRole('dialog')).toBeVisible()
+    await expect(authenticatedPage.getByText(/test tool: test_tool_for_testing/i)).toBeVisible()
+  })
+
+  test('test modal should have parameters input and run test button', async ({ authenticatedPage }) => {
+    // Create a tool first
+    await authenticatedPage.goto(BASE_URL + '/tools/new')
+    await authenticatedPage.getByLabel(/tool name/i).fill('modal_test_tool')
+    await authenticatedPage.getByRole('button', { name: /server settings/i }).click()
+    await authenticatedPage.getByLabel(/server url/i).fill('https://httpbin.org/post')
+    await authenticatedPage.getByRole('button', { name: /save/i }).click()
+    await authenticatedPage.waitForURL(/\/tools\/[a-f0-9-]+/)
+
+    // Open test modal
+    await authenticatedPage.getByRole('button', { name: /^test$/i }).click()
+    await expect(authenticatedPage.getByRole('dialog')).toBeVisible()
+
+    // Check for parameters input
+    await expect(authenticatedPage.getByLabel(/test parameters/i)).toBeVisible()
+
+    // Check for run test button in dialog
+    await expect(authenticatedPage.getByRole('button', { name: /run test/i })).toBeVisible()
+
+    // Check for cancel button
+    await expect(authenticatedPage.getByRole('button', { name: /cancel/i })).toBeVisible()
+  })
+
+  test('test modal should close on cancel', async ({ authenticatedPage }) => {
+    // Create a tool first
+    await authenticatedPage.goto(BASE_URL + '/tools/new')
+    await authenticatedPage.getByLabel(/tool name/i).fill('close_modal_test')
+    await authenticatedPage.getByRole('button', { name: /server settings/i }).click()
+    await authenticatedPage.getByLabel(/server url/i).fill('https://httpbin.org/post')
+    await authenticatedPage.getByRole('button', { name: /save/i }).click()
+    await authenticatedPage.waitForURL(/\/tools\/[a-f0-9-]+/)
+
+    // Open test modal
+    await authenticatedPage.getByRole('button', { name: /^test$/i }).click()
+    await expect(authenticatedPage.getByRole('dialog')).toBeVisible()
+
+    // Click cancel
+    await authenticatedPage.getByRole('button', { name: /cancel/i }).click()
+
+    // Modal should close
+    await expect(authenticatedPage.getByRole('dialog')).not.toBeVisible()
+  })
+
+  test('test modal should close on X button', async ({ authenticatedPage }) => {
+    // Create a tool first
+    await authenticatedPage.goto(BASE_URL + '/tools/new')
+    await authenticatedPage.getByLabel(/tool name/i).fill('x_close_test')
+    await authenticatedPage.getByRole('button', { name: /server settings/i }).click()
+    await authenticatedPage.getByLabel(/server url/i).fill('https://httpbin.org/post')
+    await authenticatedPage.getByRole('button', { name: /save/i }).click()
+    await authenticatedPage.waitForURL(/\/tools\/[a-f0-9-]+/)
+
+    // Open test modal
+    await authenticatedPage.getByRole('button', { name: /^test$/i }).click()
+    await expect(authenticatedPage.getByRole('dialog')).toBeVisible()
+
+    // Click close X button (in the dialog header)
+    const dialog = authenticatedPage.getByRole('dialog')
+    await dialog.locator('button').first().click()
+
+    // Modal should close
+    await expect(authenticatedPage.getByRole('dialog')).not.toBeVisible()
+  })
+})

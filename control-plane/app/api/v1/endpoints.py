@@ -1,6 +1,9 @@
 """REST API endpoints for the Vox Control Plane."""
 import uuid
+import time
+import json
 from typing import List, Optional
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models import Client, Assistant, PhoneNumber, CallLog, Tool, Credential
 from app.services.redis_service import redis_service
+from app.services.encryption import decrypt_value
 from app.api.v1.schemas import (
     ClientCreate, ClientUpdate, ClientResponse,
     AssistantCreate, AssistantUpdate, AssistantResponse,
@@ -16,7 +20,8 @@ from app.api.v1.schemas import (
     CallLogCreate, CallLogResponse, CallLogListResponse,
     HealthResponse,
     ToolCreate, ToolUpdate, ToolResponse, ToolListResponse,
-    CredentialCreate, CredentialUpdate, CredentialResponse, CredentialListResponse
+    CredentialCreate, CredentialUpdate, CredentialResponse, CredentialListResponse,
+    ToolTestRequest, ToolTestResponse
 )
 
 router = APIRouter()
@@ -529,6 +534,123 @@ async def delete_tool(
 
     await db.delete(tool)
     await db.commit()
+
+
+@router.post("/tools/{tool_id}/test", response_model=ToolTestResponse)
+async def test_tool(
+    tool_id: uuid.UUID,
+    data: ToolTestRequest = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Test a tool by making a request to its configured server."""
+    # Get the tool
+    result = await db.execute(select(Tool).where(Tool.id == tool_id))
+    tool = result.scalar_one_or_none()
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+
+    # Parse server config
+    try:
+        server_config = json.loads(tool.server_config)
+    except json.JSONDecodeError:
+        return ToolTestResponse(
+            success=False,
+            error="Invalid server_config JSON",
+            error_type="other"
+        )
+
+    url = server_config.get("url")
+    if not url:
+        return ToolTestResponse(
+            success=False,
+            error="Tool server_config missing URL",
+            error_type="other"
+        )
+
+    timeout_seconds = server_config.get("timeoutSeconds", 20)
+    credential_id = server_config.get("credentialId")
+    headers = server_config.get("headers", [])
+
+    # Build request headers
+    request_headers = {}
+    for header in headers:
+        if isinstance(header, dict) and "key" in header and "value" in header:
+            request_headers[header["key"]] = header["value"]
+
+    # Resolve and inject credential if configured
+    if credential_id:
+        cred_result = await db.execute(select(Credential).where(Credential.id == credential_id))
+        credential = cred_result.scalar_one_or_none()
+        if credential and credential.value_encrypted:
+            try:
+                decrypted_value = decrypt_value(credential.value_encrypted)
+                # Inject auth header based on credential type
+                if credential.type == "bearer":
+                    request_headers["Authorization"] = f"Bearer {decrypted_value}"
+                elif credential.type == "api_key":
+                    request_headers["X-API-Key"] = decrypted_value
+                elif credential.type == "basic":
+                    request_headers["Authorization"] = f"Basic {decrypted_value}"
+            except Exception:
+                return ToolTestResponse(
+                    success=False,
+                    error="Failed to decrypt credential",
+                    error_type="auth"
+                )
+
+    # Prepare request body
+    request_body = data.parameters if data else None
+
+    # Make the test request
+    start_time = time.time()
+    try:
+        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+            response = await client.post(
+                url,
+                headers=request_headers if request_headers else None,
+                json=request_body
+            )
+
+        response_time_ms = int((time.time() - start_time) * 1000)
+
+        # Truncate response body to 10KB
+        response_text = response.text
+        if len(response_text) > 10240:
+            response_text = response_text[:10240] + "\n... (truncated)"
+
+        return ToolTestResponse(
+            success=response.is_success,
+            status_code=response.status_code,
+            response_time_ms=response_time_ms,
+            response_body=response_text
+        )
+
+    except httpx.TimeoutException:
+        response_time_ms = int((time.time() - start_time) * 1000)
+        return ToolTestResponse(
+            success=False,
+            response_time_ms=response_time_ms,
+            error=f"Request timed out after {timeout_seconds} seconds",
+            error_type="timeout"
+        )
+    except httpx.ConnectError as e:
+        return ToolTestResponse(
+            success=False,
+            error=f"Connection failed: {str(e)}",
+            error_type="connection"
+        )
+    except httpx.RequestError as e:
+        return ToolTestResponse(
+            success=False,
+            error=f"Request error: {str(e)}",
+            error_type="other"
+        )
+    except Exception as e:
+        return ToolTestResponse(
+            success=False,
+            error=f"Unexpected error: {str(e)}",
+            error_type="other"
+        )
 
 
 # Credential endpoints

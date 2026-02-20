@@ -231,3 +231,19 @@ class ToolBrief(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Tool Test schemas
+class ToolTestRequest(BaseModel):
+    """Request body for testing a tool."""
+    parameters: Optional[dict] = Field(default=None, description="Test parameters to send to the tool")
+
+
+class ToolTestResponse(BaseModel):
+    """Response from tool test execution."""
+    success: bool = Field(..., description="Whether the test request succeeded")
+    status_code: Optional[int] = Field(None, description="HTTP status code from the tool server")
+    response_time_ms: Optional[int] = Field(None, description="Response time in milliseconds")
+    response_body: Optional[str] = Field(None, description="Response body (truncated to 10KB)")
+    error: Optional[str] = Field(None, description="Error message if test failed")
+    error_type: Optional[str] = Field(None, description="Error type: timeout, connection, auth, other")

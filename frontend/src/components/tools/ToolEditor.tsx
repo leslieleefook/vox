@@ -15,6 +15,7 @@ import { ToolSettingsSection } from './ToolSettingsSection'
 import { ServerSettingsSection, type ServerConfig } from './ServerSettingsSection'
 import { McpSettingsSection } from './McpSettingsSection'
 import { MessagesSection, type ToolMessage } from './MessagesSection'
+import { ToolTestModal } from './ToolTestModal'
 import { toolsApi } from '@/lib/api/tools'
 import { credentialsApi } from '@/lib/api/credentials'
 import { DEFAULT_SERVER_CONFIG, DEFAULT_MCP_CONFIG, TOOL_NAME_PATTERN } from '@/lib/constants/toolTypes'
@@ -45,6 +46,7 @@ export function ToolEditor({ toolId, clientId, onSave, onDelete }: ToolEditorPro
   const [deleting, setDeleting] = React.useState(false)
   const [credentials, setCredentials] = React.useState<Credential[]>([])
   const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const [testModalOpen, setTestModalOpen] = React.useState(false)
 
   const [formData, setFormData] = React.useState<ToolFormData>({
     name: '',
@@ -219,8 +221,9 @@ export function ToolEditor({ toolId, clientId, onSave, onDelete }: ToolEditorPro
           <VoxButton
             variant="outline"
             size="sm"
-            disabled // Phase 2 feature
-            title="Test tool (coming soon)"
+            onClick={() => setTestModalOpen(true)}
+            disabled={isNewTool}
+            title={isNewTool ? 'Save tool before testing' : 'Test tool connection'}
           >
             <Play className="h-4 w-4 mr-1" />
             Test
@@ -236,6 +239,16 @@ export function ToolEditor({ toolId, clientId, onSave, onDelete }: ToolEditorPro
           </VoxButton>
         </div>
       </div>
+
+      {/* Test Modal */}
+      {!isNewTool && toolId && (
+        <ToolTestModal
+          open={testModalOpen}
+          onOpenChange={setTestModalOpen}
+          toolId={toolId}
+          toolName={formData.name}
+        />
+      )}
 
       {/* Section 1: Tool Settings */}
       <div className="p-6 rounded-lg bg-white/5 border border-white/10">
